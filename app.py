@@ -111,7 +111,7 @@ else:
     # --------------------------------------------------
     # Statistics box (PERCENTUALE)
     # --------------------------------------------------
-    st.subheader("📊 Summary statistics (selected period)")
+    st.subheader("📊 Summary statistics")
 
     stats_df = (
         df[selected_series]
