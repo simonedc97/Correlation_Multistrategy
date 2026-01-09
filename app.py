@@ -36,7 +36,7 @@ if chart_type == "EGQ vs Index and Cash":
     df = corrEGQ.copy()
     chart_title = "EGQ vs Index and Cash"
 else:
-    df = corrE7U.copy()
+    df = corrE7X.copy()
     chart_title = "E7X vs Funds"
 
 st.sidebar.divider()
@@ -79,7 +79,7 @@ with st.sidebar.expander("Select / deselect series", expanded=False):
 st.title(chart_title)
 
 # --------------------------------------------------
-# Plot (PERCENTUALE)
+# Plot (PERCENTUALE CON % VISIBILE)
 # --------------------------------------------------
 if not selected_series:
     st.warning("Please select at least one series.")
@@ -90,7 +90,7 @@ else:
         fig.add_trace(
             go.Scatter(
                 x=df.index,
-                y=df[col] * 100,  # 🔹 solo visualizzazione
+                y=df[col] * 100,
                 mode="lines",
                 name=col,
                 hovertemplate="%{y:.2f}%<extra></extra>"
@@ -102,16 +102,17 @@ else:
         hovermode="x unified",
         template="plotly_white",
         xaxis_title="Date",
-        yaxis_title="Correlation (%)",
+        yaxis_title="Correlation",
+        yaxis=dict(ticksuffix="%"),   # ← % sull’asse
         legend_title_text="Series"
     )
 
     st.plotly_chart(fig, use_container_width=True)
 
     # --------------------------------------------------
-    # Statistics box (PERCENTUALE)
+    # Statistics box (NUMERI CON %)
     # --------------------------------------------------
-    st.subheader("📊 Summary statistics")
+    st.subheader("📊 Summary statistics (selected period)")
 
     stats_df = (
         df[selected_series]
@@ -121,13 +122,14 @@ else:
 
     stats_df = stats_df.rename(
         columns={
-            "mean": "Mean (%)",
-            "min": "Min (%)",
-            "max": "Max (%)"
+            "mean": "Mean",
+            "min": "Min",
+            "max": "Max"
         }
-    ).round(2)
+    )
 
+    # Formattazione con %
     st.dataframe(
-        stats_df,
+        stats_df.style.format("{:.2f}%"),
         use_container_width=True
     )
