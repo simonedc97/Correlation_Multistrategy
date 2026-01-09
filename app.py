@@ -27,7 +27,6 @@ corrE7U = load_corr_data("corrE7X.xlsx")
 # --------------------------------------------------
 st.sidebar.title("Controls")
 
-# Scelta grafico (COME PRIMA)
 chart_type = st.sidebar.selectbox(
     "Select chart",
     ["EGQ vs Index and Cash", "E7X vs Funds"]
@@ -43,7 +42,7 @@ else:
 st.sidebar.divider()
 
 # --------------------------------------------------
-# Date picker (calendar)
+# Date picker
 # --------------------------------------------------
 st.sidebar.subheader("Date range")
 
@@ -62,13 +61,12 @@ df = df.loc[pd.to_datetime(start_date):pd.to_datetime(end_date)]
 st.sidebar.divider()
 
 # --------------------------------------------------
-# Series selector – TENDINA
+# Series selector (tendina)
 # --------------------------------------------------
 st.sidebar.subheader("Series")
 
 with st.sidebar.expander("Select / deselect series", expanded=False):
     available_series = df.columns.tolist()
-
     selected_series = st.multiselect(
         "",
         options=available_series,
@@ -81,7 +79,7 @@ with st.sidebar.expander("Select / deselect series", expanded=False):
 st.title(chart_title)
 
 # --------------------------------------------------
-# Plot (IDENTICO A PRIMA)
+# Plot (PERCENTUALE)
 # --------------------------------------------------
 if not selected_series:
     st.warning("Please select at least one series.")
@@ -92,9 +90,10 @@ else:
         fig.add_trace(
             go.Scatter(
                 x=df.index,
-                y=df[col],
+                y=df[col] * 100,  # 🔹 solo visualizzazione
                 mode="lines",
-                name=col
+                name=col,
+                hovertemplate="%{y:.2f}%<extra></extra>"
             )
         )
 
@@ -103,8 +102,32 @@ else:
         hovermode="x unified",
         template="plotly_white",
         xaxis_title="Date",
-        yaxis_title="Correlation",
+        yaxis_title="Correlation (%)",
         legend_title_text="Series"
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
+    # --------------------------------------------------
+    # Statistics box (PERCENTUALE)
+    # --------------------------------------------------
+    st.subheader("📊 Summary statistics (selected period)")
+
+    stats_df = (
+        df[selected_series]
+        .agg(["mean", "min", "max"])
+        .T * 100
+    )
+
+    stats_df = stats_df.rename(
+        columns={
+            "mean": "Mean (%)",
+            "min": "Min (%)",
+            "max": "Max (%)"
+        }
+    ).round(2)
+
+    st.dataframe(
+        stats_df,
+        use_container_width=True
+    )
