@@ -5,10 +5,7 @@ import plotly.graph_objects as go
 # --------------------------------------------------
 # Page config
 # --------------------------------------------------
-st.set_page_config(
-    page_title="Correlation Dashboard",
-    layout="wide"
-)
+st.set_page_config(layout="wide")
 
 # --------------------------------------------------
 # Load data
@@ -26,12 +23,13 @@ corrEGQ = load_corr_data("corrEGQ.xlsx")
 corrE7U = load_corr_data("corrE7X.xlsx")
 
 # --------------------------------------------------
-# Sidebar – controls
+# Sidebar controls
 # --------------------------------------------------
-st.sidebar.title("📊 Chart Controls")
+st.sidebar.title("Controls")
 
-chart_type = st.sidebar.radio(
-    "Dataset",
+# 🔁 SCELTA GRAFICO COME PRIMA
+chart_type = st.sidebar.selectbox(
+    "Select chart",
     ["EGQ vs Index and Cash", "E7X vs Funds"]
 )
 
@@ -47,13 +45,13 @@ st.sidebar.divider()
 # --------------------------------------------------
 # Date picker (calendar)
 # --------------------------------------------------
-st.sidebar.subheader("📅 Date Range")
+st.sidebar.subheader("Date range")
 
 min_date = df.index.min().date()
 max_date = df.index.max().date()
 
 start_date, end_date = st.sidebar.date_input(
-    "Select date range",
+    "Select start and end date",
     value=(min_date, max_date),
     min_value=min_date,
     max_value=max_date
@@ -64,29 +62,28 @@ df = df.loc[pd.to_datetime(start_date):pd.to_datetime(end_date)]
 st.sidebar.divider()
 
 # --------------------------------------------------
-# Series selector
+# Serie selector (nome GENERICO)
 # --------------------------------------------------
-st.sidebar.subheader("📈 Indices")
+st.sidebar.subheader("Series")
 
 available_series = df.columns.tolist()
 
 selected_series = st.sidebar.multiselect(
-    "Select indices to display",
+    "Select series to display",
     options=available_series,
     default=available_series
 )
 
 # --------------------------------------------------
-# Main title
+# Main
 # --------------------------------------------------
 st.title(chart_title)
-st.caption("Interactive correlation analysis")
 
 # --------------------------------------------------
-# Plot
+# Plot (COME PRIMA)
 # --------------------------------------------------
 if not selected_series:
-    st.warning("Please select at least one index.")
+    st.warning("Please select at least one series.")
 else:
     fig = go.Figure()
 
@@ -96,33 +93,17 @@ else:
                 x=df.index,
                 y=df[col],
                 mode="lines",
-                name=col,
-                line=dict(width=2)
+                name=col
             )
         )
 
     fig.update_layout(
-        height=650,
-        template="plotly_white",
+        height=600,
         hovermode="x unified",
-        xaxis=dict(
-            title="Date",
-            showgrid=True,
-            rangeslider=dict(visible=True)
-        ),
-        yaxis=dict(
-            title="Correlation",
-            zeroline=True,
-            zerolinewidth=1,
-            zerolinecolor="black"
-        ),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
-        )
+        template="plotly_white",
+        xaxis_title="Date",
+        yaxis_title="Correlation",
+        legend_title_text="Series"
     )
 
     st.plotly_chart(fig, use_container_width=True)
