@@ -1,10 +1,15 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
-# ---------------------------------------------------
-# Funzione di caricamento e pulizia
-# ---------------------------------------------------
+# --------------------------------------------------
+# Config
+# --------------------------------------------------
+st.set_page_config(layout="wide")
+
+# --------------------------------------------------
+# Load data
+# --------------------------------------------------
 @st.cache_data
 def load_corr_data(path):
     df = pd.read_excel(path, sheet_name="Correlation Clean")
@@ -14,78 +19,83 @@ def load_corr_data(path):
     return df
 
 
-# ---------------------------------------------------
-# Caricamento dati
-# ---------------------------------------------------
 corrEGQ = load_corr_data("corrEGQ.xlsx")
-corrE7U = load_corr_data("corrE7X.xlsx")
+corrE7X = load_corr_data("corrE7X.xlsx")
 
-# ---------------------------------------------------
-# Sidebar – selezione grafico
-# ---------------------------------------------------
-st.sidebar.title("Selezione grafico")
+# --------------------------------------------------
+# Sidebar controls
+# --------------------------------------------------
+st.sidebar.title("Controls")
 
 chart_type = st.sidebar.selectbox(
-    "Scegli il grafico",
+    "Select chart",
     ["EGQ vs Index and Cash", "E7X vs Funds"]
 )
 
-# ---------------------------------------------------
-# Switch dataset
-# ---------------------------------------------------
 if chart_type == "EGQ vs Index and Cash":
     df = corrEGQ.copy()
-    title = "EGQ vs Index and Cash"
+    chart_title = "EGQ vs Index and Cash"
 else:
     df = corrE7X.copy()
-    title = "E7X vs Funds"
+    chart_title = "E7X vs Funds"
 
-# ---------------------------------------------------
-# Selezione date (solo quelle disponibili)
-# ---------------------------------------------------
-available_dates = df.index.unique()
+# --------------------------------------------------
+# Date filter (only available dates)
+# --------------------------------------------------
+available_dates = df.index.to_list()
 
 start_date = st.sidebar.selectbox(
-    "Data inizio",
+    "Start date",
     available_dates,
     index=0
 )
 
 end_date = st.sidebar.selectbox(
-    "Data fine",
+    "End date",
     available_dates,
     index=len(available_dates) - 1
 )
 
 df = df.loc[start_date:end_date]
 
-# ---------------------------------------------------
-# Selezione linee
-# ---------------------------------------------------
+# --------------------------------------------------
+# Series selector
+# --------------------------------------------------
 available_series = df.columns.tolist()
 
 selected_series = st.sidebar.multiselect(
-    "Seleziona le linee da visualizzare",
+    "Select series",
     available_series,
     default=available_series
 )
 
-# ---------------------------------------------------
+# --------------------------------------------------
 # Plot
-# ---------------------------------------------------
-st.title(title)
+# --------------------------------------------------
+st.title(chart_title)
 
-if len(selected_series) == 0:
-    st.warning("Seleziona almeno una linea.")
+if not selected_series:
+    st.warning("Select at least one series.")
 else:
-    fig, ax = plt.subplots(figsize=(10, 5))
+    fig = go.Figure()
 
     for col in selected_series:
-        ax.plot(df.index, df[col], label=col)
+        fig.add_trace(
+            go.Scatter(
+                x=df.index,
+                y=df[col],
+                mode="lines",
+                name=col
+            )
+        )
 
-    ax.set_xlabel("Date")
-    ax.set_ylabel("Correlation")
-    ax.legend()
-    ax.grid(True)
+    fig.update_layout(
+        height=600,
+        hovermode="x unified",
+        xaxis_title="Date",
+        yaxis_title="Correlation",
+        template="plotly_white",
+        legend_title_text="Series"
+    )
 
-    st.pyplot(fig)
+    st.plotly_chart(fig, use_container_width=True)
