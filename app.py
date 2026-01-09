@@ -18,7 +18,7 @@ def load_corr_data(path):
 # Caricamento dati
 # ---------------------------------------------------
 corrEGQ = load_corr_data("corrEGQ.xlsx")
-corrE7U = load_corr_data("corrE7U.xlsx")
+corrE7U = load_corr_data("corrE7X.xlsx")
 
 # ---------------------------------------------------
 # Sidebar – selezione grafico
@@ -27,7 +27,7 @@ st.sidebar.title("Selezione grafico")
 
 chart_type = st.sidebar.selectbox(
     "Scegli il grafico",
-    ["EGQ vs Index and Cash", "E7U vs Funds"]
+    ["EGQ vs Index and Cash", "E7X vs Funds"]
 )
 
 # ---------------------------------------------------
@@ -37,8 +37,8 @@ if chart_type == "EGQ vs Index and Cash":
     df = corrEGQ.copy()
     title = "EGQ vs Index and Cash"
 else:
-    df = corrE7U.copy()
-    title = "E7U vs Funds"
+    df = corrE7X.copy()
+    title = "E7X vs Funds"
 
 # ---------------------------------------------------
 # Selezione date (solo quelle disponibili)
