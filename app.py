@@ -3,9 +3,12 @@ import pandas as pd
 import plotly.graph_objects as go
 
 # --------------------------------------------------
-# Config
+# Page config
 # --------------------------------------------------
-st.set_page_config(layout="wide")
+st.set_page_config(
+    page_title="Correlation Dashboard",
+    layout="wide"
+)
 
 # --------------------------------------------------
 # Load data
@@ -20,15 +23,15 @@ def load_corr_data(path):
 
 
 corrEGQ = load_corr_data("corrEGQ.xlsx")
-corrE7X = load_corr_data("corrE7X.xlsx")
+corrE7U = load_corr_data("corrE7X.xlsx")
 
 # --------------------------------------------------
-# Sidebar controls
+# Sidebar – controls
 # --------------------------------------------------
-st.sidebar.title("Controls")
+st.sidebar.title("📊 Chart Controls")
 
-chart_type = st.sidebar.selectbox(
-    "Select chart",
+chart_type = st.sidebar.radio(
+    "Dataset",
     ["EGQ vs Index and Cash", "E7X vs Funds"]
 )
 
@@ -36,46 +39,54 @@ if chart_type == "EGQ vs Index and Cash":
     df = corrEGQ.copy()
     chart_title = "EGQ vs Index and Cash"
 else:
-    df = corrE7X.copy()
+    df = corrE7U.copy()
     chart_title = "E7X vs Funds"
 
-# --------------------------------------------------
-# Date filter (only available dates)
-# --------------------------------------------------
-available_dates = df.index.to_list()
+st.sidebar.divider()
 
-start_date = st.sidebar.selectbox(
-    "Start date",
-    available_dates,
-    index=0
+# --------------------------------------------------
+# Date picker (calendar)
+# --------------------------------------------------
+st.sidebar.subheader("📅 Date Range")
+
+min_date = df.index.min().date()
+max_date = df.index.max().date()
+
+start_date, end_date = st.sidebar.date_input(
+    "Select date range",
+    value=(min_date, max_date),
+    min_value=min_date,
+    max_value=max_date
 )
 
-end_date = st.sidebar.selectbox(
-    "End date",
-    available_dates,
-    index=len(available_dates) - 1
-)
+df = df.loc[pd.to_datetime(start_date):pd.to_datetime(end_date)]
 
-df = df.loc[start_date:end_date]
+st.sidebar.divider()
 
 # --------------------------------------------------
 # Series selector
 # --------------------------------------------------
+st.sidebar.subheader("📈 Indices")
+
 available_series = df.columns.tolist()
 
 selected_series = st.sidebar.multiselect(
-    "Select series",
-    available_series,
+    "Select indices to display",
+    options=available_series,
     default=available_series
 )
 
 # --------------------------------------------------
-# Plot
+# Main title
 # --------------------------------------------------
 st.title(chart_title)
+st.caption("Interactive correlation analysis")
 
+# --------------------------------------------------
+# Plot
+# --------------------------------------------------
 if not selected_series:
-    st.warning("Select at least one series.")
+    st.warning("Please select at least one index.")
 else:
     fig = go.Figure()
 
@@ -85,17 +96,33 @@ else:
                 x=df.index,
                 y=df[col],
                 mode="lines",
-                name=col
+                name=col,
+                line=dict(width=2)
             )
         )
 
     fig.update_layout(
-        height=600,
-        hovermode="x unified",
-        xaxis_title="Date",
-        yaxis_title="Correlation",
+        height=650,
         template="plotly_white",
-        legend_title_text="Series"
+        hovermode="x unified",
+        xaxis=dict(
+            title="Date",
+            showgrid=True,
+            rangeslider=dict(visible=True)
+        ),
+        yaxis=dict(
+            title="Correlation",
+            zeroline=True,
+            zerolinewidth=1,
+            zerolinecolor="black"
+        ),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        )
     )
 
     st.plotly_chart(fig, use_container_width=True)
