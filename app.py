@@ -27,7 +27,7 @@ corrE7U = load_corr_data("corrE7X.xlsx")
 # --------------------------------------------------
 st.sidebar.title("Controls")
 
-# 🔁 SCELTA GRAFICO COME PRIMA
+# Scelta grafico (COME PRIMA)
 chart_type = st.sidebar.selectbox(
     "Select chart",
     ["EGQ vs Index and Cash", "E7X vs Funds"]
@@ -62,17 +62,18 @@ df = df.loc[pd.to_datetime(start_date):pd.to_datetime(end_date)]
 st.sidebar.divider()
 
 # --------------------------------------------------
-# Serie selector (nome GENERICO)
+# Series selector – TENDINA
 # --------------------------------------------------
 st.sidebar.subheader("Series")
 
-available_series = df.columns.tolist()
+with st.sidebar.expander("Select / deselect series", expanded=False):
+    available_series = df.columns.tolist()
 
-selected_series = st.sidebar.multiselect(
-    "Select series to display",
-    options=available_series,
-    default=available_series
-)
+    selected_series = st.multiselect(
+        "",
+        options=available_series,
+        default=available_series
+    )
 
 # --------------------------------------------------
 # Main
@@ -80,7 +81,7 @@ selected_series = st.sidebar.multiselect(
 st.title(chart_title)
 
 # --------------------------------------------------
-# Plot (COME PRIMA)
+# Plot (IDENTICO A PRIMA)
 # --------------------------------------------------
 if not selected_series:
     st.warning("Please select at least one series.")
