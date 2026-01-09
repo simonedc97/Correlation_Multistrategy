@@ -20,7 +20,7 @@ def load_corr_data(path):
 
 
 corrEGQ = load_corr_data("corrEGQ.xlsx")
-corrE7U = load_corr_data("corrE7X.xlsx")
+corrE7X = load_corr_data("corrE7X.xlsx")
 
 # --------------------------------------------------
 # Sidebar controls
