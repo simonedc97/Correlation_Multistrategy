@@ -3,14 +3,6 @@ import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
 import networkx as nx
-import matplotlib.pyplot as plt
-from textwrap import wrap
-
-# --------------------------------------------------
-# Utility functions
-# --------------------------------------------------
-def wrap_label(label, width=12):
-    return "\n".join(wrap(label, width))
 
 # --------------------------------------------------
 # Page config
@@ -95,10 +87,10 @@ if not selected_series:
 # --------------------------------------------------
 # Time series plot
 # --------------------------------------------------
-fig = go.Figure()
+fig_ts = go.Figure()
 
 for col in selected_series:
-    fig.add_trace(
+    fig_ts.add_trace(
         go.Scatter(
             x=df.index,
             y=df[col] * 100,
@@ -108,7 +100,7 @@ for col in selected_series:
         )
     )
 
-fig.update_layout(
+fig_ts.update_layout(
     height=600,
     hovermode="x unified",
     template="plotly_white",
@@ -118,7 +110,7 @@ fig.update_layout(
     legend_title_text="Series"
 )
 
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig_ts, use_container_width=True)
 
 # --------------------------------------------------
 # Summary statistics
@@ -131,9 +123,7 @@ stats_df = (
     .T * 100
 )
 
-stats_df = stats_df.rename(
-    columns={"mean": "Mean", "min": "Min", "max": "Max"}
-)
+stats_df.columns = ["Mean", "Min", "Max"]
 
 st.dataframe(
     stats_df.style.format("{:.2f}%"),
@@ -155,7 +145,6 @@ fig_radar.add_trace(
     go.Scatterpolar(
         r=snapshot.values,
         theta=snapshot.index,
-        fill="none",
         name=f"End date ({snapshot_date.date()})",
         line=dict(width=3)
     )
@@ -165,7 +154,6 @@ fig_radar.add_trace(
     go.Scatterpolar(
         r=mean_corr.values,
         theta=mean_corr.index,
-        fill="none",
         name="Period mean",
         line=dict(dash="dot")
     )
@@ -174,7 +162,6 @@ fig_radar.add_trace(
 fig_radar.update_layout(
     polar=dict(
         radialaxis=dict(
-            visible=True,
             range=[-100, 100],
             ticksuffix="%"
         )
@@ -186,74 +173,85 @@ fig_radar.update_layout(
 st.plotly_chart(fig_radar, use_container_width=True)
 
 # --------------------------------------------------
-# MST – end date
+# MST – end date (INTERACTIVE)
 # --------------------------------------------------
 st.subheader("🌳 Minimum Spanning Tree (end date)")
 
-# Correlation matrix at end date
-corr_snapshot = df.loc[snapshot_date, selected_series].to_frame()
-corr_snapshot = corr_snapshot.join(
-    df.loc[snapshot_date, selected_series].to_frame().T
-)
+# Correlation matrix (period-based, stable)
+corrl = df[selected_series].corr()
 
-corr_matrix = df.loc[snapshot_date, selected_series].values
-corrl = pd.DataFrame(
-    np.outer(corr_matrix, corr_matrix),
-    index=selected_series,
-    columns=selected_series
-)
-
-# In realtà vogliamo la vera matrice di correlazione:
-corrl = df.loc[snapshot_date, selected_series].to_frame()
-corrl = pd.DataFrame(
-    np.corrcoef(
-        df[selected_series].dropna().T
-    ),
-    index=selected_series,
-    columns=selected_series
-)
-
-# Distanze
+# Distance transformation
 distances = np.sqrt(2 * (1 - corrl))
 
-# Grafo completo
+# Build full graph
 G = nx.Graph()
 for i in corrl.index:
     for j in corrl.columns:
-        if i != j:
+        if i < j:
             G.add_edge(i, j, weight=distances.loc[i, j])
 
 # MST
 mst = nx.minimum_spanning_tree(G, weight="weight")
 
-# Layout
+# Layout (fixed seed = stability)
 pos = nx.spring_layout(mst, seed=42)
 
-# Figura
-fig_mst, ax = plt.subplots(figsize=(11, 9))
+# --- Edges
+edge_x = []
+edge_y = []
+edge_text = []
 
-wrapped_labels = {n: wrap_label(n) for n in mst.nodes}
+for u, v, d in mst.edges(data=True):
+    x0, y0 = pos[u]
+    x1, y1 = pos[v]
+    edge_x += [x0, x1, None]
+    edge_y += [y0, y1, None]
+    edge_text.append(f"{u} – {v}<br>Distance: {d['weight']:.2f}")
 
-nx.draw(
-    mst,
-    pos,
-    ax=ax,
-    with_labels=True,
-    labels=wrapped_labels,
-    node_size=2800,
-    node_color="lightgreen",
-    edge_color="gray",
-    font_size=8
+edge_trace = go.Scatter(
+    x=edge_x,
+    y=edge_y,
+    line=dict(width=1, color="gray"),
+    hoverinfo="none",
+    mode="lines"
 )
 
-edge_labels = {(u, v): f"{d['weight']:.2f}" for u, v, d in mst.edges(data=True)}
-nx.draw_networkx_edge_labels(mst, pos, edge_labels=edge_labels, ax=ax, font_size=7)
+# --- Nodes
+node_x = []
+node_y = []
+node_text = []
 
-ax.set_title(
-    f"Minimum Spanning Tree – {snapshot_date.date()}",
-    fontsize=14
+for node in mst.nodes():
+    x, y = pos[node]
+    node_x.append(x)
+    node_y.append(y)
+    node_text.append(node)
+
+node_trace = go.Scatter(
+    x=node_x,
+    y=node_y,
+    mode="markers+text",
+    text=node_text,
+    textposition="middle center",
+    hovertemplate="%{text}<extra></extra>",
+    marker=dict(
+        size=30,
+        color="lightgreen",
+        line=dict(width=1, color="black")
+    )
 )
 
-ax.axis("off")
+fig_mst = go.Figure(
+    data=[edge_trace, node_trace],
+    layout=go.Layout(
+        title=f"MST – {snapshot_date.date()}",
+        template="plotly_white",
+        showlegend=False,
+        hovermode="closest",
+        height=700,
+        xaxis=dict(showgrid=False, zeroline=False, visible=False),
+        yaxis=dict(showgrid=False, zeroline=False, visible=False)
+    )
+)
 
-st.pyplot(fig_mst)
+st.plotly_chart(fig_mst, use_container_width=True)
