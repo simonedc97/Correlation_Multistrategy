@@ -25,7 +25,7 @@ corrE7X = load_corr_data("corrE7X.xlsx")
 # --------------------------------------------------
 # Sidebar controls
 # --------------------------------------------------
-st.sidebar.title("Controls")
+st.sidebar.title("")
 
 chart_type = st.sidebar.selectbox(
     "Select chart",
@@ -65,7 +65,7 @@ st.sidebar.divider()
 # --------------------------------------------------
 st.sidebar.subheader("Series")
 
-with st.sidebar.expander("Select / deselect series", expanded=False):
+with st.sidebar.expander("Select series", expanded=False):
     available_series = df.columns.tolist()
     selected_series = st.multiselect(
         "",
@@ -137,7 +137,7 @@ st.dataframe(
 # --------------------------------------------------
 # Radar chart – end date vs period mean
 # --------------------------------------------------
-st.subheader("🕸️ Correlation snapshot")
+st.subheader("🕸️ Correlation Radar")
 
 snapshot_date = df.index.max()
 
