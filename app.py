@@ -123,37 +123,53 @@ fig_ts.update_layout(
 st.plotly_chart(fig_ts, use_container_width=True)
 
 # --------------------------------------------------
-# Radar chart
+# Radar chart – end date vs period mean
 # --------------------------------------------------
-st.subheader("🕸️ Correlation snapshot")
+st.subheader("🕸️ Correlation Radar")
 
 snapshot_date = df.index.max()
+
 snapshot = df.loc[snapshot_date, selected_series] * 100
 mean_corr = df[selected_series].mean() * 100
 
 fig_radar = go.Figure()
 
-for serie in selected_series:
-    fig_radar.add_trace(
-        go.Scatterpolar(
-            r=[snapshot[serie], mean_corr[serie]],
-            theta=[serie, serie],
-            mode="lines+markers",
-            name=serie,
-            line=dict(color=color_map[serie])
-        )
+# End date
+fig_radar.add_trace(
+    go.Scatterpolar(
+        r=snapshot.values,
+        theta=snapshot.index,
+        fill="none",
+        name=f"End date ({snapshot_date.date()})",
+        line=dict(width=3)
     )
+)
+
+# Period mean
+fig_radar.add_trace(
+    go.Scatterpolar(
+        r=mean_corr.values,
+        theta=mean_corr.index,
+        fill="none",
+        name="Period mean",
+        line=dict(dash="dot")
+    )
+)
 
 fig_radar.update_layout(
     polar=dict(
-        radialaxis=dict(range=[-100, 100], ticksuffix="%")
+        radialaxis=dict(
+            visible=True,
+            range=[-100, 100],
+            ticksuffix="%"
+        )
     ),
     template="plotly_white",
-    height=650
+    height=650,
+    legend_title_text="Correlation"
 )
 
 st.plotly_chart(fig_radar, use_container_width=True)
-
 # --------------------------------------------------
 # MST – INTERACTIVE (COLORI COERENTI)
 # --------------------------------------------------
