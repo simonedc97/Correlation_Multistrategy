@@ -247,3 +247,27 @@ fig_mst = go.Figure(
 )
 
 st.plotly_chart(fig_mst, use_container_width=True)
+
+# --------------------------------------------------
+# Summary statistics
+# --------------------------------------------------
+st.subheader("📊 Summary statistics")
+
+stats_df = (
+    df[selected_series]
+    .agg(["mean", "min", "max"])
+    .T * 100
+)
+
+stats_df = stats_df.rename(
+    columns={
+        "mean": "Mean",
+        "min": "Min",
+        "max": "Max"
+    }
+)
+
+st.dataframe(
+    stats_df.style.format("{:.2f}%"),
+    use_container_width=True
+)
