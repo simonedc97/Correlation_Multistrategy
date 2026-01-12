@@ -1,6 +1,16 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import numpy as np
+import networkx as nx
+import matplotlib.pyplot as plt
+from textwrap import wrap
+
+# --------------------------------------------------
+# Utility functions
+# --------------------------------------------------
+def wrap_label(label, width=12):
+    return "\n".join(wrap(label, width))
 
 # --------------------------------------------------
 # Page config
@@ -25,7 +35,7 @@ corrE7X = load_corr_data("corrE7X.xlsx")
 # --------------------------------------------------
 # Sidebar controls
 # --------------------------------------------------
-st.sidebar.title("")
+st.sidebar.title("Controls")
 
 chart_type = st.sidebar.selectbox(
     "Select chart",
@@ -65,7 +75,7 @@ st.sidebar.divider()
 # --------------------------------------------------
 st.sidebar.subheader("Series")
 
-with st.sidebar.expander("Select series", expanded=False):
+with st.sidebar.expander("Select / deselect series", expanded=False):
     available_series = df.columns.tolist()
     selected_series = st.multiselect(
         "",
@@ -122,11 +132,7 @@ stats_df = (
 )
 
 stats_df = stats_df.rename(
-    columns={
-        "mean": "Mean",
-        "min": "Min",
-        "max": "Max"
-    }
+    columns={"mean": "Mean", "min": "Min", "max": "Max"}
 )
 
 st.dataframe(
@@ -135,18 +141,16 @@ st.dataframe(
 )
 
 # --------------------------------------------------
-# Radar chart – end date vs period mean
+# Radar chart – end date vs mean
 # --------------------------------------------------
-st.subheader("🕸️ Correlation Radar")
+st.subheader("🕸️ Correlation snapshot")
 
 snapshot_date = df.index.max()
-
 snapshot = df.loc[snapshot_date, selected_series] * 100
 mean_corr = df[selected_series].mean() * 100
 
 fig_radar = go.Figure()
 
-# End date
 fig_radar.add_trace(
     go.Scatterpolar(
         r=snapshot.values,
@@ -157,7 +161,6 @@ fig_radar.add_trace(
     )
 )
 
-# Period mean
 fig_radar.add_trace(
     go.Scatterpolar(
         r=mean_corr.values,
@@ -177,8 +180,80 @@ fig_radar.update_layout(
         )
     ),
     template="plotly_white",
-    height=650,
-    legend_title_text="Correlation"
+    height=650
 )
 
 st.plotly_chart(fig_radar, use_container_width=True)
+
+# --------------------------------------------------
+# MST – end date
+# --------------------------------------------------
+st.subheader("🌳 Minimum Spanning Tree (end date)")
+
+# Correlation matrix at end date
+corr_snapshot = df.loc[snapshot_date, selected_series].to_frame()
+corr_snapshot = corr_snapshot.join(
+    df.loc[snapshot_date, selected_series].to_frame().T
+)
+
+corr_matrix = df.loc[snapshot_date, selected_series].values
+corrl = pd.DataFrame(
+    np.outer(corr_matrix, corr_matrix),
+    index=selected_series,
+    columns=selected_series
+)
+
+# In realtà vogliamo la vera matrice di correlazione:
+corrl = df.loc[snapshot_date, selected_series].to_frame()
+corrl = pd.DataFrame(
+    np.corrcoef(
+        df[selected_series].dropna().T
+    ),
+    index=selected_series,
+    columns=selected_series
+)
+
+# Distanze
+distances = np.sqrt(2 * (1 - corrl))
+
+# Grafo completo
+G = nx.Graph()
+for i in corrl.index:
+    for j in corrl.columns:
+        if i != j:
+            G.add_edge(i, j, weight=distances.loc[i, j])
+
+# MST
+mst = nx.minimum_spanning_tree(G, weight="weight")
+
+# Layout
+pos = nx.spring_layout(mst, seed=42)
+
+# Figura
+fig_mst, ax = plt.subplots(figsize=(11, 9))
+
+wrapped_labels = {n: wrap_label(n) for n in mst.nodes}
+
+nx.draw(
+    mst,
+    pos,
+    ax=ax,
+    with_labels=True,
+    labels=wrapped_labels,
+    node_size=2800,
+    node_color="lightgreen",
+    edge_color="gray",
+    font_size=8
+)
+
+edge_labels = {(u, v): f"{d['weight']:.2f}" for u, v, d in mst.edges(data=True)}
+nx.draw_networkx_edge_labels(mst, pos, edge_labels=edge_labels, ax=ax, font_size=7)
+
+ax.set_title(
+    f"Minimum Spanning Tree – {snapshot_date.date()}",
+    fontsize=14
+)
+
+ax.axis("off")
+
+st.pyplot(fig_mst)
