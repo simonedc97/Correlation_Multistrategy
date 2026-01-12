@@ -61,7 +61,7 @@ df = df.loc[pd.to_datetime(start_date):pd.to_datetime(end_date)]
 st.sidebar.divider()
 
 # --------------------------------------------------
-# Series selector (tendina)
+# Series selector
 # --------------------------------------------------
 st.sidebar.subheader("Series")
 
@@ -78,58 +78,107 @@ with st.sidebar.expander("Select / deselect series", expanded=False):
 # --------------------------------------------------
 st.title(chart_title)
 
-# --------------------------------------------------
-# Plot (PERCENTUALE CON % VISIBILE)
-# --------------------------------------------------
 if not selected_series:
     st.warning("Please select at least one series.")
-else:
-    fig = go.Figure()
+    st.stop()
 
-    for col in selected_series:
-        fig.add_trace(
-            go.Scatter(
-                x=df.index,
-                y=df[col] * 100,
-                mode="lines",
-                name=col,
-                hovertemplate="%{y:.2f}%<extra></extra>"
-            )
+# --------------------------------------------------
+# Time series plot
+# --------------------------------------------------
+fig = go.Figure()
+
+for col in selected_series:
+    fig.add_trace(
+        go.Scatter(
+            x=df.index,
+            y=df[col] * 100,
+            mode="lines",
+            name=col,
+            hovertemplate="%{y:.2f}%<extra></extra>"
         )
-
-    fig.update_layout(
-        height=600,
-        hovermode="x unified",
-        template="plotly_white",
-        xaxis_title="Date",
-        yaxis_title="Correlation",
-        yaxis=dict(ticksuffix="%"),   # ← % sull’asse
-        legend_title_text="Series"
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+fig.update_layout(
+    height=600,
+    hovermode="x unified",
+    template="plotly_white",
+    xaxis_title="Date",
+    yaxis_title="Correlation",
+    yaxis=dict(ticksuffix="%"),
+    legend_title_text="Series"
+)
 
-    # --------------------------------------------------
-    # Statistics box (NUMERI CON %)
-    # --------------------------------------------------
-    st.subheader("📊 Summary statistics")
+st.plotly_chart(fig, use_container_width=True)
 
-    stats_df = (
-        df[selected_series]
-        .agg(["mean", "min", "max"])
-        .T * 100
+# --------------------------------------------------
+# Summary statistics
+# --------------------------------------------------
+st.subheader("📊 Summary statistics")
+
+stats_df = (
+    df[selected_series]
+    .agg(["mean", "min", "max"])
+    .T * 100
+)
+
+stats_df = stats_df.rename(
+    columns={
+        "mean": "Mean",
+        "min": "Min",
+        "max": "Max"
+    }
+)
+
+st.dataframe(
+    stats_df.style.format("{:.2f}%"),
+    use_container_width=True
+)
+
+# --------------------------------------------------
+# Radar chart – end date vs period mean
+# --------------------------------------------------
+st.subheader("🕸️ Correlation snapshot")
+
+snapshot_date = df.index.max()
+
+snapshot = df.loc[snapshot_date, selected_series] * 100
+mean_corr = df[selected_series].mean() * 100
+
+fig_radar = go.Figure()
+
+# End date
+fig_radar.add_trace(
+    go.Scatterpolar(
+        r=snapshot.values,
+        theta=snapshot.index,
+        fill="none",
+        name=f"End date ({snapshot_date.date()})",
+        line=dict(width=3)
     )
+)
 
-    stats_df = stats_df.rename(
-        columns={
-            "mean": "Mean",
-            "min": "Min",
-            "max": "Max"
-        }
+# Period mean
+fig_radar.add_trace(
+    go.Scatterpolar(
+        r=mean_corr.values,
+        theta=mean_corr.index,
+        fill="none",
+        name="Period mean",
+        line=dict(dash="dot")
     )
+)
 
-    # Formattazione con %
-    st.dataframe(
-        stats_df.style.format("{:.2f}%"),
-        use_container_width=True
-    )
+fig_radar.update_layout(
+    polar=dict(
+        radialaxis=dict(
+            visible=True,
+            range=[-100, 100],
+            ticksuffix="%"
+        )
+    ),
+    template="plotly_white",
+    height=650,
+    legend_title_text="Correlation"
+)
+
+st.plotly_chart(fig_radar, use_container_width=True)
