@@ -1,4 +1,7 @@
 streamlit
 pandas
-openpyxl
-plotly
+plotly.graph_objects
+numpy
+networkx
+matplotlib.pyplot
+textwrap
