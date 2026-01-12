@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
 import networkx as nx
+from plotly.colors import qualitative
 
 # --------------------------------------------------
 # Page config
@@ -85,6 +86,15 @@ if not selected_series:
     st.stop()
 
 # --------------------------------------------------
+# COLOR MAP (CHIAVE DI TUTTO)
+# --------------------------------------------------
+palette = qualitative.Plotly
+color_map = {
+    serie: palette[i % len(palette)]
+    for i, serie in enumerate(selected_series)
+}
+
+# --------------------------------------------------
 # Time series plot
 # --------------------------------------------------
 fig_ts = go.Figure()
@@ -96,6 +106,7 @@ for col in selected_series:
             y=df[col] * 100,
             mode="lines",
             name=col,
+            line=dict(color=color_map[col]),
             hovertemplate="%{y:.2f}%<extra></extra>"
         )
     )
@@ -106,32 +117,13 @@ fig_ts.update_layout(
     template="plotly_white",
     xaxis_title="Date",
     yaxis_title="Correlation",
-    yaxis=dict(ticksuffix="%"),
-    legend_title_text="Series"
+    yaxis=dict(ticksuffix="%")
 )
 
 st.plotly_chart(fig_ts, use_container_width=True)
 
 # --------------------------------------------------
-# Summary statistics
-# --------------------------------------------------
-st.subheader("📊 Summary statistics")
-
-stats_df = (
-    df[selected_series]
-    .agg(["mean", "min", "max"])
-    .T * 100
-)
-
-stats_df.columns = ["Mean", "Min", "Max"]
-
-st.dataframe(
-    stats_df.style.format("{:.2f}%"),
-    use_container_width=True
-)
-
-# --------------------------------------------------
-# Radar chart – end date vs mean
+# Radar chart
 # --------------------------------------------------
 st.subheader("🕸️ Correlation snapshot")
 
@@ -141,30 +133,20 @@ mean_corr = df[selected_series].mean() * 100
 
 fig_radar = go.Figure()
 
-fig_radar.add_trace(
-    go.Scatterpolar(
-        r=snapshot.values,
-        theta=snapshot.index,
-        name=f"End date ({snapshot_date.date()})",
-        line=dict(width=3)
+for serie in selected_series:
+    fig_radar.add_trace(
+        go.Scatterpolar(
+            r=[snapshot[serie], mean_corr[serie]],
+            theta=[serie, serie],
+            mode="lines+markers",
+            name=serie,
+            line=dict(color=color_map[serie])
+        )
     )
-)
-
-fig_radar.add_trace(
-    go.Scatterpolar(
-        r=mean_corr.values,
-        theta=mean_corr.index,
-        name="Period mean",
-        line=dict(dash="dot")
-    )
-)
 
 fig_radar.update_layout(
     polar=dict(
-        radialaxis=dict(
-            range=[-100, 100],
-            ticksuffix="%"
-        )
+        radialaxis=dict(range=[-100, 100], ticksuffix="%")
     ),
     template="plotly_white",
     height=650
@@ -173,58 +155,46 @@ fig_radar.update_layout(
 st.plotly_chart(fig_radar, use_container_width=True)
 
 # --------------------------------------------------
-# MST – end date (INTERACTIVE)
+# MST – INTERACTIVE (COLORI COERENTI)
 # --------------------------------------------------
 st.subheader("🌳 Minimum Spanning Tree (end date)")
 
-# Correlation matrix (period-based, stable)
 corrl = df[selected_series].corr()
-
-# Distance transformation
 distances = np.sqrt(2 * (1 - corrl))
 
-# Build full graph
 G = nx.Graph()
 for i in corrl.index:
     for j in corrl.columns:
         if i < j:
             G.add_edge(i, j, weight=distances.loc[i, j])
 
-# MST
 mst = nx.minimum_spanning_tree(G, weight="weight")
-
-# Layout (fixed seed = stability)
 pos = nx.spring_layout(mst, seed=42)
 
-# --- Edges
-edge_x = []
-edge_y = []
-edge_text = []
-
-for u, v, d in mst.edges(data=True):
+# Edges
+edge_x, edge_y = [], []
+for u, v in mst.edges():
     x0, y0 = pos[u]
     x1, y1 = pos[v]
     edge_x += [x0, x1, None]
     edge_y += [y0, y1, None]
-    edge_text.append(f"{u} – {v}<br>Distance: {d['weight']:.2f}")
 
 edge_trace = go.Scatter(
     x=edge_x,
     y=edge_y,
-    line=dict(width=1, color="gray"),
-    hoverinfo="none",
-    mode="lines"
+    mode="lines",
+    line=dict(color="gray", width=1),
+    hoverinfo="none"
 )
 
-# --- Nodes
-node_x = []
-node_y = []
-node_text = []
+# Nodes
+node_x, node_y, node_colors, node_text = [], [], [], []
 
 for node in mst.nodes():
     x, y = pos[node]
     node_x.append(x)
     node_y.append(y)
+    node_colors.append(color_map[node])
     node_text.append(node)
 
 node_trace = go.Scatter(
@@ -235,8 +205,8 @@ node_trace = go.Scatter(
     textposition="middle center",
     hovertemplate="%{text}<extra></extra>",
     marker=dict(
-        size=30,
-        color="lightgreen",
+        size=32,
+        color=node_colors,
         line=dict(width=1, color="black")
     )
 )
@@ -247,10 +217,9 @@ fig_mst = go.Figure(
         title=f"MST – {snapshot_date.date()}",
         template="plotly_white",
         showlegend=False,
-        hovermode="closest",
         height=700,
-        xaxis=dict(showgrid=False, zeroline=False, visible=False),
-        yaxis=dict(showgrid=False, zeroline=False, visible=False)
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False)
     )
 )
 
