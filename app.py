@@ -157,7 +157,7 @@ st.plotly_chart(fig_radar, use_container_width=True)
 # --------------------------------------------------
 # MST – INTERACTIVE (COLORI COERENTI)
 # --------------------------------------------------
-st.subheader("🌳 Minimum Spanning Tree (end date)")
+st.subheader("🌳 Minimum Spanning Tree")
 
 corrl = df[selected_series].corr()
 distances = np.sqrt(2 * (1 - corrl))
@@ -204,6 +204,13 @@ node_trace = go.Scatter(
     text=node_text,
     textposition="middle center",
     hovertemplate="%{text}<extra></extra>",
+    textfont=dict(
+        family="Arial",
+        size=12,
+        color="black"
+        # Plotly non ha un flag "bold", il grassetto si ottiene
+        # aumentando size + font pulito
+    ),
     marker=dict(
         size=32,
         color=node_colors,
