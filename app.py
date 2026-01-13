@@ -32,7 +32,7 @@ st.sidebar.title("Controls")
 
 chart_type = st.sidebar.selectbox(
     "Select chart",
-    ["EGQ vs Index and Cashhh", "E7X vs Funds"]
+    ["EGQ vs Index and Cash", "E7X vs Funds"]
 )
 
 if chart_type == "EGQ vs Index and Cash":
