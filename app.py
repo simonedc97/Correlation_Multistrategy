@@ -38,9 +38,11 @@ chart_type = st.sidebar.selectbox(
 if chart_type == "EGQ vs Index and Cash":
     df = corrEGQ.copy()
     chart_title = "EGQ vs Index and Cash"
+    reference_asset = "EGQ"
 else:
     df = corrE7X.copy()
     chart_title = "E7X vs Funds"
+    reference_asset = "E7X"
 
 st.sidebar.divider()
 
@@ -86,13 +88,16 @@ if not selected_series:
     st.stop()
 
 # --------------------------------------------------
-# COLOR MAP (CHIAVE DI TUTTO)
+# COLOR MAP
 # --------------------------------------------------
 palette = qualitative.Plotly
 color_map = {
     serie: palette[i % len(palette)]
     for i, serie in enumerate(selected_series)
 }
+
+# Colore dedicato per il reference asset
+reference_color = "black"
 
 # --------------------------------------------------
 # Time series plot
@@ -123,7 +128,7 @@ fig_ts.update_layout(
 st.plotly_chart(fig_ts, use_container_width=True)
 
 # --------------------------------------------------
-# Radar chart – end date vs period mean
+# Radar chart
 # --------------------------------------------------
 st.subheader("🕸️ Correlation Radar")
 
@@ -134,23 +139,19 @@ mean_corr = df[selected_series].mean() * 100
 
 fig_radar = go.Figure()
 
-# End date
 fig_radar.add_trace(
     go.Scatterpolar(
         r=snapshot.values,
         theta=snapshot.index,
-        fill="none",
         name=f"End date ({snapshot_date.date()})",
         line=dict(width=3)
     )
 )
 
-# Period mean
 fig_radar.add_trace(
     go.Scatterpolar(
         r=mean_corr.values,
         theta=mean_corr.index,
-        fill="none",
         name="Period mean",
         line=dict(dash="dot")
     )
@@ -165,19 +166,21 @@ fig_radar.update_layout(
         )
     ),
     template="plotly_white",
-    height=650,
-    legend_title_text="Correlation"
+    height=650
 )
 
 st.plotly_chart(fig_radar, use_container_width=True)
-# --------------------------------------------------
-# MST – INTERACTIVE (COLORI COERENTI)
-# --------------------------------------------------
-st.subheader("🌳 Minimum Spanning Tree")
 
+# --------------------------------------------------
+# MST – CON REFERENCE ASSET (NON STRUTTURALE)
+# --------------------------------------------------
+st.subheader("🌳 Minimum Spanning Tree (conditional on reference asset)")
+
+# Correlation & distance matrix
 corrl = df[selected_series].corr()
 distances = np.sqrt(2 * (1 - corrl))
 
+# Build graph
 G = nx.Graph()
 for i in corrl.index:
     for j in corrl.columns:
@@ -185,9 +188,18 @@ for i in corrl.index:
             G.add_edge(i, j, weight=distances.loc[i, j])
 
 mst = nx.minimum_spanning_tree(G, weight="weight")
+
+# Layout MST
 pos = nx.spring_layout(mst, seed=42)
 
-# Edges
+# -----------------
+# Reference asset position (centro)
+# -----------------
+pos_ref = np.array([0.0, 0.0])
+
+# -----------------
+# MST edges
+# -----------------
 edge_x, edge_y = [], []
 for u, v in mst.edges():
     x0, y0 = pos[u]
@@ -203,7 +215,27 @@ edge_trace = go.Scatter(
     hoverinfo="none"
 )
 
-# Nodes
+# -----------------
+# Reference edges (NON MST)
+# -----------------
+ref_edge_x, ref_edge_y = [], []
+
+for node in mst.nodes():
+    x, y = pos[node]
+    ref_edge_x += [pos_ref[0], x, None]
+    ref_edge_y += [pos_ref[1], y, None]
+
+ref_edge_trace = go.Scatter(
+    x=ref_edge_x,
+    y=ref_edge_y,
+    mode="lines",
+    line=dict(color="lightgray", width=1, dash="dot"),
+    hoverinfo="none"
+)
+
+# -----------------
+# MST nodes
+# -----------------
 node_x, node_y, node_colors, node_text = [], [], [], []
 
 for node in mst.nodes():
@@ -220,13 +252,7 @@ node_trace = go.Scatter(
     text=node_text,
     textposition="middle center",
     hovertemplate="%{text}<extra></extra>",
-    textfont=dict(
-        family="Arial",
-        size=12,
-        color="black"
-        # Plotly non ha un flag "bold", il grassetto si ottiene
-        # aumentando size + font pulito
-    ),
+    textfont=dict(size=12, color="black"),
     marker=dict(
         size=32,
         color=node_colors,
@@ -234,13 +260,40 @@ node_trace = go.Scatter(
     )
 )
 
+# -----------------
+# Reference node
+# -----------------
+ref_node_trace = go.Scatter(
+    x=[pos_ref[0]],
+    y=[pos_ref[1]],
+    mode="markers+text",
+    text=[reference_asset],
+    textposition="middle center",
+    hovertemplate=f"{reference_asset} (reference)<extra></extra>",
+    textfont=dict(size=14, color="white"),
+    marker=dict(
+        size=42,
+        color=reference_color,
+        line=dict(width=2, color="black")
+    )
+)
+
 fig_mst = go.Figure(
-    data=[edge_trace, node_trace],
+    data=[
+        edge_trace,
+        ref_edge_trace,
+        node_trace,
+        ref_node_trace
+    ],
     layout=go.Layout(
-        title=f"MST – {snapshot_date.date()}",
+        title=(
+            f"MST – {snapshot_date.date()}<br>"
+            f"<sup>Distances conditional on {reference_asset} "
+            f"(dashed edges are not part of the MST)</sup>"
+        ),
         template="plotly_white",
         showlegend=False,
-        height=700,
+        height=750,
         xaxis=dict(visible=False),
         yaxis=dict(visible=False)
     )
