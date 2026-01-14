@@ -174,7 +174,7 @@ st.plotly_chart(fig_radar, use_container_width=True)
 # --------------------------------------------------
 # MST – CON REFERENCE ASSET (NON STRUTTURALE)
 # --------------------------------------------------
-st.subheader("🌳 Minimum Spanning Tree (conditional on reference asset)")
+st.subheader("🌳 Minimum Spanning Tree")
 
 # Correlation & distance matrix
 corrl = df[selected_series].corr()
@@ -289,7 +289,6 @@ fig_mst = go.Figure(
         title=(
             f"MST – {snapshot_date.date()}<br>"
             f"<sup>Distances conditional on {reference_asset} "
-            f"(dashed edges are not part of the MST)</sup>"
         ),
         template="plotly_white",
         showlegend=False,
