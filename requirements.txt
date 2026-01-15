@@ -2,6 +2,6 @@ streamlit
 pandas
 plotly
 numpy
-matplotlib
 networkx
+XlsxWriter
 openpyxl
