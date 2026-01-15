@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 import numpy as np
 import networkx as nx
 from plotly.colors import qualitative
+from io import BytesIO
 
 # --------------------------------------------------
 # Page config
@@ -156,7 +157,6 @@ fig_radar.update_layout(
 
 st.plotly_chart(fig_radar, use_container_width=True)
 
-
 # --------------------------------------------------
 # Summary statistics
 # --------------------------------------------------
@@ -168,6 +168,35 @@ stats_df = (
     .T * 100
 ).rename(columns={"mean": "Mean", "min": "Min", "max": "Max"})
 
+# --------------------------------------------------
+# Download button (Excel)
+# --------------------------------------------------
+file_start = pd.to_datetime(start_date).strftime("%Y%m%d")
+file_end = pd.to_datetime(end_date).strftime("%Y%m%d")
+file_name = f"summary_statistics_{file_start}_{file_end}.xlsx"
+
+output = BytesIO()
+
+with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+    (
+        stats_df
+        .reset_index()
+        .rename(columns={"index": "Asset"})
+        .to_excel(writer, sheet_name="Summary statistics", index=False)
+    )
+
+output.seek(0)
+
+st.download_button(
+    label="⬇️ Download summary table (Excel)",
+    data=output,
+    file_name=file_name,
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
+
+# --------------------------------------------------
+# Table display
+# --------------------------------------------------
 st.dataframe(
     stats_df.style.format("{:.2f}%"),
     use_container_width=True
