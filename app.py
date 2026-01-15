@@ -157,25 +157,35 @@ fig_radar.update_layout(
 st.plotly_chart(fig_radar, use_container_width=True)
 
 # --------------------------------------------------
-# MST – CORRETTO (USA LE CORRELAZIONI DEL RADAR)
+# MST – CON REFERENCE NODE (CORRETTO)
 # --------------------------------------------------
-st.subheader("🌳 Minimum Spanning Tree (conditional on reference)")
+st.subheader("🌳 Minimum Spanning Tree (with reference)")
 
-# ---- distanza tra asset = differenza di esposizione al reference
+snapshot = df.loc[snapshot_date, selected_series]
+
 G = nx.Graph()
 
+# ---- reference edges (radiali)
+for asset, rho in snapshot.items():
+    d_ref = np.sqrt(2 * (1 - rho))
+    G.add_edge(reference_asset, asset, weight=d_ref)
+
+# ---- asset-asset edges (similarità di esposizione)
 for i in snapshot.index:
     for j in snapshot.index:
         if i < j:
             d = abs(snapshot[i] - snapshot[j])
             G.add_edge(i, j, weight=d)
 
+# ---- MST
 mst = nx.minimum_spanning_tree(G)
 
 # ---- layout
 pos = nx.spring_layout(mst, seed=42)
 
-# ---- edges
+# --------------------------------------------------
+# EDGES
+# --------------------------------------------------
 edge_x, edge_y = [], []
 for u, v in mst.edges():
     x0, y0 = pos[u]
@@ -187,21 +197,31 @@ edge_trace = go.Scatter(
     x=edge_x,
     y=edge_y,
     mode="lines",
-    line=dict(color="gray", width=1),
+    line=dict(color="gray", width=1.5),
     hoverinfo="none"
 )
 
-# ---- nodes
-node_x, node_y, node_colors, node_text = [], [], [], []
+# --------------------------------------------------
+# NODES
+# --------------------------------------------------
+node_x, node_y, node_size, node_color, node_text = [], [], [], [], []
 
 for node in mst.nodes():
+
     x, y = pos[node]
     node_x.append(x)
     node_y.append(y)
-    node_colors.append(color_map[node])
-    node_text.append(
-        f"{node}<br>ρ = {snapshot[node]:.2f}"
-    )
+
+    if node == reference_asset:
+        node_size.append(70)
+        node_color.append("black")
+        label = f"<b>{node}</b>"
+    else:
+        node_size.append(48)
+        node_color.append(color_map[node])
+        label = f"<b>{node}</b><br>ρ={snapshot[node]:.2f}"
+
+    node_text.append(label)
 
 node_trace = go.Scatter(
     x=node_x,
@@ -209,30 +229,38 @@ node_trace = go.Scatter(
     mode="markers+text",
     text=node_text,
     textposition="middle center",
-    hovertemplate="%{text}<extra></extra>",
+    hoverinfo="none",
     marker=dict(
-        size=36,
-        color=node_colors,
-        line=dict(width=1, color="black")
+        size=node_size,
+        color=node_color,
+        line=dict(width=2, color="black")
+    ),
+    textfont=dict(
+        size=14,
+        color="white"
     )
 )
 
+# --------------------------------------------------
+# FIGURE
+# --------------------------------------------------
 fig_mst = go.Figure(
     data=[edge_trace, node_trace],
     layout=go.Layout(
         title=(
-            f"MST conditional on {reference_asset}<br>"
-            f"<sup>Distances = |ρᵢ − ρⱼ|, snapshot {snapshot_date.date()}</sup>"
+            f"MST with reference: {reference_asset}<br>"
+            f"<sup>Distances: |ρᵢ−ρⱼ| (asset) · √(2(1−ρ)) (reference)</sup>"
         ),
         template="plotly_white",
         showlegend=False,
-        height=750,
+        height=800,
         xaxis=dict(visible=False),
         yaxis=dict(visible=False)
     )
 )
 
 st.plotly_chart(fig_mst, use_container_width=True)
+
 
 # --------------------------------------------------
 # Summary statistics
