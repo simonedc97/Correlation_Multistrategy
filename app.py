@@ -217,6 +217,10 @@ st.download_button(
 # Table display
 # --------------------------------------------------
 st.dataframe(
-    stats_df.style.format("{:.2f}%"),
+    stats_df.style.format({
+        "Mean (%)": "{:.2f}%",
+        "Min (%)": "{:.2f}%",
+        "Max (%)": "{:.2f}%"
+    }),
     use_container_width=True
 )
