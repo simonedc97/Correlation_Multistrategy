@@ -158,15 +158,32 @@ fig_radar.update_layout(
 st.plotly_chart(fig_radar, use_container_width=True)
 
 # --------------------------------------------------
-# Summary statistics
+# Summary statistics (with last occurrence dates)
 # --------------------------------------------------
 st.subheader("📊 Summary statistics")
 
-stats_df = (
-    df[selected_series]
-    .agg(["mean", "min", "max"])
-    .T * 100
-).rename(columns={"mean": "Mean", "min": "Min", "max": "Max"})
+stats_df = pd.DataFrame(index=selected_series)
+
+# Mean
+stats_df["Mean (%)"] = df[selected_series].mean() * 100
+
+# Min value
+stats_df["Min (%)"] = df[selected_series].min() * 100
+
+# Last date of Min
+stats_df["Min Date"] = [
+    df[col][df[col] == df[col].min()].index.max().date()
+    for col in selected_series
+]
+
+# Max value
+stats_df["Max (%)"] = df[selected_series].max() * 100
+
+# Last date of Max
+stats_df["Max Date"] = [
+    df[col][df[col] == df[col].max()].index.max().date()
+    for col in selected_series
+]
 
 # --------------------------------------------------
 # Download button (Excel)
