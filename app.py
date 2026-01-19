@@ -238,4 +238,5 @@ with tab_corr:
 # ==================================================
 # TAB 2 — STRESS TEST
 # ==================================================
-#st.title(chart_title)
+with tab_corr:
+    st.title(chart_title)
