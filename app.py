@@ -167,23 +167,24 @@ stats_df = pd.DataFrame(index=selected_series)
 # Mean
 stats_df["Mean (%)"] = df[selected_series].mean() * 100
 
-# Min value
+# Min
 stats_df["Min (%)"] = df[selected_series].min() * 100
-
-# Last date of Min
 stats_df["Min Date"] = [
-    df[col][df[col] == df[col].min()].index.max().date()
+    df[col][df[col] == df[col].min()].index.max()
     for col in selected_series
 ]
 
-# Max value
+# Max
 stats_df["Max (%)"] = df[selected_series].max() * 100
-
-# Last date of Max
 stats_df["Max Date"] = [
-    df[col][df[col] == df[col].max()].index.max().date()
+    df[col][df[col] == df[col].max()].index.max()
     for col in selected_series
 ]
+
+# Convert dates to string (safe for Streamlit & Excel)
+stats_df["Min Date"] = stats_df["Min Date"].dt.strftime("%d/%m/%Y")
+stats_df["Max Date"] = stats_df["Max Date"].dt.strftime("%d/%m/%Y")
+
 
 # --------------------------------------------------
 # Download button (Excel)
