@@ -181,9 +181,10 @@ stats_df["Max Date"] = [
     for col in selected_series
 ]
 
-# Convert dates to string (safe for Streamlit & Excel)
-stats_df["Min Date"] = stats_df["Min Date"].dt.strftime("%d/%m/%Y")
-stats_df["Max Date"] = stats_df["Max Date"].dt.strftime("%d/%m/%Y")
+# Convert dates to string (fondamentale per Streamlit Styler)
+stats_df["Min Date"] = pd.to_datetime(stats_df["Min Date"]).dt.strftime("%d/%m/%Y")
+stats_df["Max Date"] = pd.to_datetime(stats_df["Max Date"]).dt.strftime("%d/%m/%Y")
+
 
 
 # --------------------------------------------------
