@@ -99,6 +99,7 @@ with tab_corr:
     # --------------------------------------------------
     # Time series plot
     # --------------------------------------------------
+    st.subheader("Correlation Time Series")
     fig_ts = go.Figure()
 
     for col in selected_series:
