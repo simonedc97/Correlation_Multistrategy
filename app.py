@@ -238,6 +238,4 @@ with tab_corr:
 # ==================================================
 # TAB 2 — STRESS TEST
 # ==================================================
-with tab_stress:
-    st.title("Stress Test")
-    st.info("Sheet riservato allo stress test. Verrà popolato successivamente.")
+st.title(chart_title)
