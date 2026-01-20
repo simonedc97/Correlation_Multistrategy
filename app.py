@@ -318,7 +318,7 @@ with tab_stress:
         )
         
         fig.update_layout(
-            title=f"Peer Analysis – {selected_portfolio}",
+            title=f"Comparison Analysis – {selected_portfolio}",
             xaxis_title="Stress PnL (bps)",
             yaxis_title="Scenario",
             template="plotly_white",
