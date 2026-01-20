@@ -237,7 +237,7 @@ with tab_stress:
             barmode="group",
             title=f"Stress Test PnL on {selected_date.strftime('%-d/%-m/%Y')}",
             xaxis_title="Scenario",
-            yaxis_title="Stress PnL",
+            yaxis_title="Stress PnL (bps)",
             template="plotly_white",
             height=600
         )
