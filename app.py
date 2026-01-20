@@ -244,3 +244,93 @@ with tab_stress:
 
         st.plotly_chart(fig_bar, use_container_width=True)
 
+        # -----------------------------
+        # Peer Analysis
+        # -----------------------------
+        st.subheader("Peer Analysis")
+
+        # Calcolo mediana e quantili per ciascun scenario (escludendo il portafoglio corrente)
+        peer_records = []
+        for portfolio in portfolios:
+            df_port = df_filtered[df_filtered["Portfolio"] == portfolio]
+            df_peers = df_filtered[df_filtered["Portfolio"] != portfolio]
+
+            for scenario in df_port["ScenarioName"].unique():
+                port_value = df_port.loc[df_port["ScenarioName"] == scenario, "StressPnL"].values[0]
+                peers_values = df_peers.loc[df_peers["ScenarioName"] == scenario, "StressPnL"]
+
+                median = peers_values.median()
+                q15 = peers_values.quantile(0.15)
+                q75 = peers_values.quantile(0.75)
+
+                peer_records.append({
+                    "Portfolio": portfolio,
+                    "Scenario": scenario,
+                    "StressPnL": port_value,
+                    "Peer Median": median,
+                    "Peer Q15": q15,
+                    "Peer Q75": q75
+                })
+
+        peer_df = pd.DataFrame(peer_records)
+
+        # Plot confronto portafoglio vs mediana peers con bande quantili
+        fig_peer = go.Figure()
+        for i, portfolio in enumerate(portfolios):
+            df_port_peer = peer_df[peer_df["Portfolio"] == portfolio]
+            
+            # Banda quantile
+            fig_peer.add_trace(
+                go.Scatter(
+                    x=df_port_peer["Scenario"],
+                    y=df_port_peer["Peer Q75"],
+                    mode='lines',
+                    line=dict(width=0),
+                    showlegend=False
+                )
+            )
+            fig_peer.add_trace(
+                go.Scatter(
+                    x=df_port_peer["Scenario"],
+                    y=df_port_peer["Peer Q15"],
+                    mode='lines',
+                    fill='tonexty',
+                    fillcolor='rgba(173,216,230,0.3)',  # banda azzurra semi-trasparente
+                    line=dict(width=0),
+                    name=f"{portfolio} - Peer 15-75 Quantile"
+                )
+            )
+
+            # Mediana peers
+            fig_peer.add_trace(
+                go.Scatter(
+                    x=df_port_peer["Scenario"],
+                    y=df_port_peer["Peer Median"],
+                    mode='lines+markers',
+                    line=dict(dash='dot', color=palette[i % len(palette)]),
+                    name=f"{portfolio} - Peer Median"
+                )
+            )
+
+            # Portafoglio
+            fig_peer.add_trace(
+                go.Scatter(
+                    x=df_port_peer["Scenario"],
+                    y=df_port_peer["StressPnL"],
+                    mode='lines+markers',
+                    line=dict(width=3, color=palette[i % len(palette)]),
+                    name=f"{portfolio} - Actual"
+                )
+            )
+
+        fig_peer.update_layout(
+            title=f"Stress Test Peer Analysis on {selected_date.strftime('%Y/%m/%d')}",
+            xaxis_title="Scenario",
+            yaxis_title="Stress PnL (bps)",
+            template="plotly_white",
+            height=600,
+            hovermode="x unified"
+        )
+
+        st.plotly_chart(fig_peer, use_container_width=True)
+
