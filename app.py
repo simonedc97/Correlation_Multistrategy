@@ -247,7 +247,7 @@ with tab_stress:
         # -----------------------------
         # Portfolio vs Peer Median (scatter)
         # -----------------------------
-        st.subheader("Portfolio vs Peer Median")
+        st.subheader("Comparison Analysis")
 
         # Selezione portafoglio (nel body, non in sidebar)
         selected_portfolio = st.selectbox(
