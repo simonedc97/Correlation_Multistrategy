@@ -15,19 +15,19 @@ st.set_page_config(layout="wide")
 tab_corr, tab_stress = st.tabs(["Correlation", "Stress Test"])
 
 # --------------------------------------------------
-# Sidebar controls (differenti per tab)
+# Sidebar controls (sempre presenti)
 # --------------------------------------------------
 st.sidebar.title("Controls")
 
-# --------------------------------------------------
 # Chart selector sempre presente
-# --------------------------------------------------
 chart_type = st.sidebar.selectbox(
     "Select chart",
     ["EGQ vs Index and Cash", "E7X vs Funds"]
 )
 
+# --------------------------------------------------
 # Funzione per caricamento dati Correlation
+# --------------------------------------------------
 @st.cache_data
 def load_corr_data(path):
     df = pd.read_excel(path, sheet_name="Correlation Clean")
@@ -39,13 +39,38 @@ def load_corr_data(path):
 corrEGQ = load_corr_data("corrEGQ.xlsx")
 corrE7X = load_corr_data("corrE7X.xlsx")
 
+# --------------------------------------------------
+# Funzione per caricamento dati Stress Test
+# --------------------------------------------------
+@st.cache_data
+def load_stress_data(path):
+    xls = pd.ExcelFile(path)
+    records = []
+    for sheet_name in xls.sheet_names:
+        if "_" in sheet_name:
+            portfolio, scenario_name = sheet_name.split("_", 1)
+        else:
+            portfolio, scenario_name = sheet_name, sheet_name
+        df = pd.read_excel(xls, sheet_name=sheet_name)
+        df = df.rename(columns={
+            df.columns[0]: "Date",
+            df.columns[2]: "Scenario",
+            df.columns[4]: "StressPnL"
+        })
+        df["Date"] = pd.to_datetime(df["Date"])
+        df["Portfolio"] = portfolio
+        df["ScenarioName"] = scenario_name
+        records.append(df[["Date", "Scenario", "StressPnL", "Portfolio", "ScenarioName"]])
+    return pd.concat(records, ignore_index=True)
+
+stress_data = load_stress_data("stress_test_totE7X.xlsx")
+
 # ==================================================
 # TAB 1 — CORRELATION
 # ==================================================
 with tab_corr:
-
     st.session_state.current_tab = "Correlation"
-    
+
     # Selezione dataframe in base al chart_type
     if chart_type == "EGQ vs Index and Cash":
         df = corrEGQ.copy()
@@ -57,7 +82,7 @@ with tab_corr:
         reference_asset = "E7X"
 
     # -----------------------------
-    # Date range picker
+    # Date range picker solo qui
     # -----------------------------
     st.sidebar.subheader("Date range")
     start_date, end_date = st.sidebar.date_input(
@@ -77,7 +102,6 @@ with tab_corr:
         options=df.columns.tolist(),
         default=df.columns.tolist()
     )
-
     if not selected_series:
         st.warning("Please select at least one series.")
         st.stop()
@@ -169,47 +193,22 @@ with tab_corr:
 # TAB 2 — STRESS TEST
 # ==================================================
 with tab_stress:
-
     st.session_state.current_tab = "StressTest"
     st.title("Stress Test Analysis")
 
     # -----------------------------
-    # Load stress test data
-    # -----------------------------
-    @st.cache_data
-    def load_stress_data(path):
-        xls = pd.ExcelFile(path)
-        records = []
-        for sheet_name in xls.sheet_names:
-            # Sheet: portfolio_scenario
-            if "_" in sheet_name:
-                portfolio, scenario_name = sheet_name.split("_", 1)
-            else:
-                portfolio, scenario_name = sheet_name, sheet_name
-
-            df = pd.read_excel(xls, sheet_name=sheet_name)
-            df = df.rename(columns={
-                df.columns[0]: "Date",       # Colonna A
-                df.columns[2]: "Scenario",   # Colonna C
-                df.columns[4]: "StressPnL"   # Colonna E
-            })
-            df["Date"] = pd.to_datetime(df["Date"])
-            df["Portfolio"] = portfolio
-            df["ScenarioName"] = scenario_name
-            records.append(df[["Date", "Scenario", "StressPnL", "Portfolio", "ScenarioName"]])
-        return pd.concat(records, ignore_index=True)
-
-    stress_data = load_stress_data("stress_test_totE7X.xlsx")
-
-    # -----------------------------
-    # Select date (solo per stress test)
+    # Date selector solo qui
     # -----------------------------
     st.sidebar.subheader("Select Date")
     all_dates = stress_data["Date"].sort_values().unique()
-    selected_date = st.sidebar.selectbox("Select Date", all_dates)
+    # Formatta le date senza zeri iniziali
+    date_options = [d.strftime("%-d/%-m/%Y") for d in all_dates]
+    selected_date_str = st.sidebar.selectbox("Select Date", date_options)
+    # Converti la data selezionata in datetime per filtrare il DataFrame
+    selected_date = pd.to_datetime(selected_date_str, dayfirst=True)
 
     # Filtra per data selezionata
-    df_filtered = stress_data[stress_data["Date"] == pd.to_datetime(selected_date)]
+    df_filtered = stress_data[stress_data["Date"] == selected_date]
 
     if df_filtered.empty:
         st.warning("No data available for the selected date.")
@@ -236,7 +235,7 @@ with tab_stress:
 
         fig_bar.update_layout(
             barmode="group",
-            title=f"Stress Test PnL on {pd.to_datetime(selected_date).date()}",
+            title=f"Stress Test PnL on {selected_date.strftime('%-d/%-m/%Y')}",
             xaxis_title="Scenario",
             yaxis_title="Stress PnL",
             template="plotly_white",
