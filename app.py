@@ -84,7 +84,7 @@ with tab_corr:
     # -----------------------------
     # Date range picker solo qui
     # -----------------------------
-    st.sidebar.subheader("Date range")
+    st.sidebar.subheader("Date range (Correlation")
     start_date, end_date = st.sidebar.date_input(
         "Select start and end date",
         value=(df.index.min().date(), df.index.max().date()),
@@ -199,11 +199,11 @@ with tab_stress:
     # -----------------------------
     # Date selector solo qui
     # -----------------------------
-    st.sidebar.subheader("Select Date")
+    st.sidebar.subheader("Date (Stresst Test")
     all_dates = stress_data["Date"].sort_values().unique()
     # Formatta le date senza zeri iniziali
     date_options = [d.strftime("%-d/%-m/%Y") for d in all_dates]
-    selected_date_str = st.sidebar.selectbox("Select Date", date_options)
+    selected_date_str = st.sidebar.selectbox("Select date", date_options)
     # Converti la data selezionata in datetime per filtrare il DataFrame
     selected_date = pd.to_datetime(selected_date_str, dayfirst=True)
 
