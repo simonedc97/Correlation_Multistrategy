@@ -201,11 +201,11 @@ with tab_stress:
     # -----------------------------
     st.sidebar.subheader("Date (Stress Test)")
     all_dates = stress_data["Date"].sort_values().unique()
-    # Formatta le date senza zeri iniziali
-    date_options = [d.strftime("%-d/%-m/%Y") for d in all_dates]
+    # Formatta le date in formato YYYY/MM/DD
+    date_options = [d.strftime("%Y/%m/%d") for d in all_dates]
     selected_date_str = st.sidebar.selectbox("Select date", date_options)
     # Converti la data selezionata in datetime per filtrare il DataFrame
-    selected_date = pd.to_datetime(selected_date_str, dayfirst=True)
+    selected_date = pd.to_datetime(selected_date_str, format="%Y/%m/%d")
 
     # Filtra per data selezionata
     df_filtered = stress_data[stress_data["Date"] == selected_date]
@@ -235,7 +235,7 @@ with tab_stress:
 
         fig_bar.update_layout(
             barmode="group",
-            title=f"Stress Test PnL on {selected_date.strftime('%-d/%-m/%Y')}",
+            #title=f"Stress Test PnL on {selected_date.strftime('%Y/%m/%d')}",
             xaxis_title="Scenario",
             yaxis_title="Stress PnL (bps)",
             template="plotly_white",
