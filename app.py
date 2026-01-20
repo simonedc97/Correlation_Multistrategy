@@ -235,69 +235,73 @@ with tab_corr:
         use_container_width=True
     )
 
-# ==================================================
-# TAB 2 — STRESS TEST
-# ==================================================
 with tab_stress:
     st.title("Stress Test Analysis")
 
     # --------------------------------------------------
-    # Load all sheets from Excel
+    # Load stress test data
     # --------------------------------------------------
     @st.cache_data
     def load_stress_data(path):
         xls = pd.ExcelFile(path)
-        sheets_data = {}
+        records = []
         for sheet_name in xls.sheet_names:
+            # Sheet: portfolio_scenario
+            if "_" in sheet_name:
+                portfolio, scenario_name = sheet_name.split("_", 1)
+            else:
+                portfolio, scenario_name = sheet_name, sheet_name
+
             df = pd.read_excel(xls, sheet_name=sheet_name)
-            # Assume col A = Date, C = Scenario, E = Stress PnL
             df = df.rename(columns={
-                df.columns[0]: "Date",
-                df.columns[2]: "Scenario",
-                df.columns[4]: "StressPnL"
+                df.columns[0]: "Date",       # Colonna A
+                df.columns[2]: "Scenario",   # Colonna C
+                df.columns[4]: "StressPnL"   # Colonna E
             })
             df["Date"] = pd.to_datetime(df["Date"])
-            sheets_data[sheet_name] = df
-        return sheets_data
+            df["Portfolio"] = portfolio
+            df["ScenarioName"] = scenario_name
+            records.append(df[["Date", "Scenario", "StressPnL", "Portfolio", "ScenarioName"]])
+        return pd.concat(records, ignore_index=True)
 
     stress_data = load_stress_data("stress_test_totE7X.xlsx")
 
     # --------------------------------------------------
     # Select date
     # --------------------------------------------------
-    all_dates = pd.concat([df["Date"] for df in stress_data.values()]).sort_values().unique()
-    selected_date = st.selectbox("Select Date", all_dates)
+    all_dates = stress_data["Date"].sort_values().unique()
+    selected_date = st.sidebar.selectbox("Select Date", all_dates)
 
-    # --------------------------------------------------
-    # Select portfolio
-    # --------------------------------------------------
-    portfolio_names = list(stress_data.keys())
-    selected_portfolio = st.selectbox("Select Portfolio", portfolio_names)
-
-    # Filter data by date
-    df_portfolio = stress_data[selected_portfolio]
-    df_filtered = df_portfolio[df_portfolio["Date"] == pd.to_datetime(selected_date)]
+    # Filter data by selected date
+    df_filtered = stress_data[stress_data["Date"] == pd.to_datetime(selected_date)]
 
     if df_filtered.empty:
         st.warning("No data available for the selected date.")
     else:
         # --------------------------------------------------
-        # Plot Stress Test as bar chart
+        # Plot grouped bar chart
         # --------------------------------------------------
         fig_bar = go.Figure()
 
-        fig_bar.add_trace(
-            go.Bar(
-                x=df_filtered["Scenario"],
-                y=df_filtered["StressPnL"],
-                text=df_filtered["StressPnL"],
-                textposition="auto",
-                marker_color="crimson"
+        portfolios = df_filtered["Portfolio"].unique()
+        palette = qualitative.Plotly
+
+        for i, portfolio in enumerate(portfolios):
+            df_port = df_filtered[df_filtered["Portfolio"] == portfolio]
+            fig_bar.add_trace(
+                go.Bar(
+                    x=df_port["ScenarioName"],
+                    y=df_port["StressPnL"],
+                    name=portfolio,
+                    marker_color=palette[i % len(palette)],
+                    text=df_port["StressPnL"],
+                    textposition="auto"
+                )
             )
-        )
 
         fig_bar.update_layout(
-            title=f"Stress Test PnL for {selected_portfolio} on {selected_date.date()}",
+            barmode="group",
+            title=f"Stress Test PnL on {pd.to_datetime(selected_date).date()}",
             xaxis_title="Scenario",
             yaxis_title="Stress PnL",
             template="plotly_white",
@@ -305,3 +309,4 @@ with tab_stress:
         )
 
         st.plotly_chart(fig_bar, use_container_width=True)
+
