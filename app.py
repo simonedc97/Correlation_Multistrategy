@@ -251,7 +251,7 @@ with tab_stress:
 
         # Selezione portafoglio da confrontare
         selected_portfolio = st.sidebar.selectbox(
-            "Select portfolio for peer comparison",
+            "Select portfolio for Stress Test comparison",
             portfolios,
             index=0
         )
@@ -294,7 +294,7 @@ with tab_stress:
         )
 
         fig_scatter.update_layout(
-            title=f"{selected_portfolio} vs Peer Median on {selected_date.strftime('%Y/%m/%d')}",
+            title=f"{selected_portfolio} vs Median of other on {selected_date.strftime('%Y/%m/%d')}",
             xaxis_title="Stress PnL (bps)",
             yaxis_title="Scenario",
             template="plotly_white",
