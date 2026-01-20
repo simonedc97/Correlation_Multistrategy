@@ -214,28 +214,36 @@ with tab_stress:
         st.warning("No data available for the selected date.")
     else:
         # -----------------------------
-        # Plot grouped bar chart per portafoglio
+        # Portfolio selector (default E7X)
+        # -----------------------------
+        st.sidebar.subheader("Portfolio selection")
+        portfolio_options = df_filtered["Portfolio"].unique().tolist()
+        # Default E7X se presente, altrimenti primo portafoglio
+        default_portfolio = "E7X" if "E7X" in portfolio_options else portfolio_options[0]
+        selected_portfolio = st.sidebar.selectbox("Select portfolio", portfolio_options, index=portfolio_options.index(default_portfolio))
+
+        # Filtra per portafoglio selezionato
+        df_portfolio = df_filtered[df_filtered["Portfolio"] == selected_portfolio]
+
+        # -----------------------------
+        # Plot grouped bar chart per scenario
         # -----------------------------
         fig_bar = go.Figure()
-        portfolios = df_filtered["Portfolio"].unique()
         palette = qualitative.Plotly
 
-        for i, portfolio in enumerate(portfolios):
-            df_port = df_filtered[df_filtered["Portfolio"] == portfolio]
-            fig_bar.add_trace(
-                go.Bar(
-                    x=df_port["ScenarioName"],
-                    y=df_port["StressPnL"],
-                    name=portfolio,
-                    marker_color=palette[i % len(palette)],
-                    text=df_port["StressPnL"],
-                    textposition="auto"
-                )
+        fig_bar.add_trace(
+            go.Bar(
+                x=df_portfolio["ScenarioName"],
+                y=df_portfolio["StressPnL"],
+                name=selected_portfolio,
+                marker_color=palette[0],
+                text=df_portfolio["StressPnL"],
+                textposition="auto"
             )
+        )
 
         fig_bar.update_layout(
             barmode="group",
-            #title=f"Stress Test PnL on {selected_date.strftime('%Y/%m/%d')}",
             xaxis_title="Scenario",
             yaxis_title="Stress PnL (bps)",
             template="plotly_white",
@@ -243,3 +251,67 @@ with tab_stress:
         )
 
         st.plotly_chart(fig_bar, use_container_width=True)
+
+        # -----------------------------
+        # Peer Analysis section
+        # -----------------------------
+        st.subheader("⭐ Peer Analysis")
+
+        # Sidebar per peer selection
+        st.sidebar.subheader("Peer portfolios")
+        peer_options = [p for p in portfolio_options if p != selected_portfolio]
+        selected_peers = st.sidebar.multiselect(
+            "Select peer portfolios",
+            options=peer_options,
+            default=peer_options[:2]  # di default seleziona i primi 2 peer
+        )
+
+        if selected_peers:
+            # Costruisci il DataFrame per peer + analysis portfolio
+            df_peer = df_filtered[df_filtered["Portfolio"].isin([selected_portfolio] + selected_peers)]
+            scenarios = df_peer["ScenarioName"].unique()
+
+            fig_peer = go.Figure()
+            for scenario in scenarios:
+                df_scen = df_peer[df_peer["ScenarioName"] == scenario]
+
+                # Mediana peer
+                df_scen_peers = df_scen[df_scen["Portfolio"].isin(selected_peers)]
+                median_peer = df_scen_peers["StressPnL"].median()
+
+                # Analysis portfolio
+                df_scen_port = df_scen[df_scen["Portfolio"] == selected_portfolio]
+                analysis_value = df_scen_port["StressPnL"].values[0] if not df_scen_port.empty else None
+
+                # Scatter per mediana peer
+                fig_peer.add_trace(
+                    go.Scatter(
+                        x=[median_peer],
+                        y=[scenario],
+                        mode="markers",
+                        marker=dict(color="red", size=12),
+                        name="Peer median",
+                        showlegend=(scenario == scenarios[0])
+                    )
+                )
+
+                # Scatter per analysis portfolio
+                fig_peer.add_trace(
+                    go.Scatter(
+                        x=[analysis_value],
+                        y=[scenario],
+                        mode="markers",
+                        marker=dict(color="orange", size=16, symbol="star"),
+                        name="Analysis portfolio",
+                        showlegend=(scenario == scenarios[0])
+                    )
+                )
+
+            fig_peer.update_layout(
+                xaxis_title="Stress PnL",
+                yaxis_title="Scenario",
+                template="plotly_white",
+                height=600
+            )
+
+            st.plotly_chart(fig_peer, use_container_width=True)
