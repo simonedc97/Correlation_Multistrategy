@@ -247,7 +247,7 @@ with tab_stress:
         # -----------------------------
         # Portfolio vs Peer Median (scatter)
         # -----------------------------
-        st.title("f"COmparison Analysys on {selected_date.strftime('%Y/%m/%d')")
+        st.title("Comparison Analysys")
 
         # Selezione portafoglio (nel body, non in sidebar)
         selected_portfolio = st.selectbox(
