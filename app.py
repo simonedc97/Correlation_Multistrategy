@@ -245,22 +245,22 @@ with tab_stress:
         st.plotly_chart(fig_bar, use_container_width=True)
 
         # -----------------------------
-        # Portfolio vs Peer Median (scatter only)
+        # Portfolio vs Peer Median (scatter)
         # -----------------------------
         st.subheader("Portfolio vs Peer Median")
 
-        # Selezione portafoglio da confrontare
-        selected_portfolio = st.sidebar.selectbox(
-            "Select portfolio for Stress Test comparison",
+        # Selezione portafoglio (nel body, non in sidebar)
+        selected_portfolio = st.selectbox(
+            "Select portfolio",
             portfolios,
             index=0
         )
 
-        # Dati portafoglio e peer
+        # Dati portafoglio selezionato e peer
         df_port = df_filtered[df_filtered["Portfolio"] == selected_portfolio]
         df_peers = df_filtered[df_filtered["Portfolio"] != selected_portfolio]
 
-        # Mediana peer per scenario
+        # Calcolo mediana peer per scenario
         peer_median = (
             df_peers
             .groupby("ScenarioName")["StressPnL"]
@@ -294,7 +294,6 @@ with tab_stress:
         )
 
         fig_scatter.update_layout(
-            title=f"{selected_portfolio} vs Median of other on {selected_date.strftime('%Y/%m/%d')}",
             xaxis_title="Stress PnL (bps)",
             yaxis_title="Scenario",
             template="plotly_white",
