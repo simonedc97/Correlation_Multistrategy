@@ -239,4 +239,69 @@ with tab_corr:
 # TAB 2 — STRESS TEST
 # ==================================================
 with tab_stress:
-    st.title(chart_title)
+    st.title("Stress Test Analysis")
+
+    # --------------------------------------------------
+    # Load all sheets from Excel
+    # --------------------------------------------------
+    @st.cache_data
+    def load_stress_data(path):
+        xls = pd.ExcelFile(path)
+        sheets_data = {}
+        for sheet_name in xls.sheet_names:
+            df = pd.read_excel(xls, sheet_name=sheet_name)
+            # Assume col A = Date, C = Scenario, E = Stress PnL
+            df = df.rename(columns={
+                df.columns[0]: "Date",
+                df.columns[2]: "Scenario",
+                df.columns[4]: "StressPnL"
+            })
+            df["Date"] = pd.to_datetime(df["Date"])
+            sheets_data[sheet_name] = df
+        return sheets_data
+
+    stress_data = load_stress_data("stress_test_totE7X.xlsx")
+
+    # --------------------------------------------------
+    # Select date
+    # --------------------------------------------------
+    all_dates = pd.concat([df["Date"] for df in stress_data.values()]).sort_values().unique()
+    selected_date = st.selectbox("Select Date", all_dates)
+
+    # --------------------------------------------------
+    # Select portfolio
+    # --------------------------------------------------
+    portfolio_names = list(stress_data.keys())
+    selected_portfolio = st.selectbox("Select Portfolio", portfolio_names)
+
+    # Filter data by date
+    df_portfolio = stress_data[selected_portfolio]
+    df_filtered = df_portfolio[df_portfolio["Date"] == pd.to_datetime(selected_date)]
+
+    if df_filtered.empty:
+        st.warning("No data available for the selected date.")
+    else:
+        # --------------------------------------------------
+        # Plot Stress Test as bar chart
+        # --------------------------------------------------
+        fig_bar = go.Figure()
+
+        fig_bar.add_trace(
+            go.Bar(
+                x=df_filtered["Scenario"],
+                y=df_filtered["StressPnL"],
+                text=df_filtered["StressPnL"],
+                textposition="auto",
+                marker_color="crimson"
+            )
+        )
+
+        fig_bar.update_layout(
+            title=f"Stress Test PnL for {selected_portfolio} on {selected_date.date()}",
+            xaxis_title="Scenario",
+            yaxis_title="Stress PnL",
+            template="plotly_white",
+            height=600
+        )
+
+        st.plotly_chart(fig_bar, use_container_width=True)
