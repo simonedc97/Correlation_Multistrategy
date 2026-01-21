@@ -621,7 +621,7 @@ with tab_stress:
                 mode="lines",
                 line=dict(width=14, color="rgba(255,0,0,0.25)"),
                 name="25–75 Quantile Bucket range" #if _ == 0 else None,  # Solo una volta in legenda
-                hoverinfo="skip"
+                #hoverinfo="skip"
             )
         )
     
