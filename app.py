@@ -245,6 +245,17 @@ with tab_stress:
     st.session_state.current_tab = "StressTest"
     st.title(stress_title)
 
+    # --------------------------------------------------
+    # 🔗 FILTRO PORTAFOGLI = Select Series (Correlation)
+    # --------------------------------------------------
+    stress_data = stress_data[
+        stress_data["Portfolio"].isin(selected_series)
+    ]
+
+    if stress_data.empty:
+        st.warning("No Stress Test data for selected series.")
+        st.stop()
+
     # -----------------------------
     # Date selector (solo Stress)
     # -----------------------------
