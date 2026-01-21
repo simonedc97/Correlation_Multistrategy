@@ -216,6 +216,8 @@ with tab_stress:
         # -----------------------------
         # Plot grouped bar chart per portafoglio
         # -----------------------------
+        
+        st.subheader("Stress Test PnL")
         fig_bar = go.Figure()
         portfolios = df_filtered["Portfolio"].unique()
         palette = qualitative.Plotly
@@ -235,7 +237,7 @@ with tab_stress:
 
         fig_bar.update_layout(
             barmode="group",
-            title=f"Stress Test PnL on {selected_date.strftime('%Y/%m/%d')}",
+            #title=f"Stress Test PnL on {selected_date.strftime('%Y/%m/%d')}",
             xaxis_title="Scenario",
             yaxis_title="Stress PnL (bps)",
             template="plotly_white",
