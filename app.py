@@ -612,7 +612,7 @@ with tab_stress:
     
     fig = go.Figure()
     
-    # Q25–Q75 range (barra)
+    # Q25–Q75 range (barra ombreggiata)
     for _, r in df_plot.iterrows():
         fig.add_trace(
             go.Scatter(
@@ -620,8 +620,8 @@ with tab_stress:
                 y=[r["ScenarioName"], r["ScenarioName"]],
                 mode="lines",
                 line=dict(width=14, color="rgba(255,0,0,0.25)"),
-                #name="25–75 Quantile Bucket range" if _ == 0 else None,  # Solo una volta in legenda
-                #hoverinfo="skip"
+                showlegend=False,  # non appare nella legenda
+                hoverinfo="skip"
             )
         )
     
@@ -632,7 +632,7 @@ with tab_stress:
             y=df_plot["ScenarioName"],
             mode="markers",
             marker=dict(size=9, color="red"),
-            name="Bucket Portfolio median (in shaded areas, the 25-75 quantile dispersion)"
+            name="Bucket median"
         )
     )
     
@@ -656,6 +656,13 @@ with tab_stress:
     )
     
     st.plotly_chart(fig, use_container_width=True)
+    
+    # Nota sotto il grafico
+    st.markdown(
+        "<sub>Note: the shaded areas represent the dispersion between the 25th and 75th percentile of the Bucket.</sub>",
+        unsafe_allow_html=True
+    )
+
     
     # -----------------------------
     # Bottone di download Excel dei dati del grafico
