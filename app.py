@@ -192,140 +192,221 @@ with tab_corr:
 # ==================================================
 # TAB 2 — STRESS TEST
 # ==================================================
+# --------------------------------------------------
+# Funzione per caricamento dati Stress Test
+# --------------------------------------------------
+@st.cache_data
+def load_stress_data(path):
+    xls = pd.ExcelFile(path)
+    records = []
+
+    for sheet_name in xls.sheet_names:
+        if "_" in sheet_name:
+            portfolio, scenario_name = sheet_name.split("_", 1)
+        else:
+            portfolio, scenario_name = sheet_name, sheet_name
+
+        df = pd.read_excel(xls, sheet_name=sheet_name)
+
+        df = df.rename(columns={
+            df.columns[0]: "Date",
+            df.columns[2]: "Scenario",
+            df.columns[4]: "StressPnL"
+        })
+
+        df["Date"] = pd.to_datetime(df["Date"])
+        df["Portfolio"] = portfolio
+        df["ScenarioName"] = scenario_name
+
+        records.append(
+            df[["Date", "Scenario", "StressPnL", "Portfolio", "ScenarioName"]]
+        )
+
+    return pd.concat(records, ignore_index=True)
+
+
+# --------------------------------------------------
+# Selezione file Stress Test in base al chart_type
+# --------------------------------------------------
+if chart_type == "EGQ vs Index and Cash":
+    stress_path = "stress_test_totEGQ.xlsx"
+    stress_title = "Stress Test Analysis – EGQ"
+else:
+    stress_path = "stress_test_totE7X.xlsx"
+    stress_title = "Stress Test Analysis – E7X"
+
+stress_data = load_stress_data(stress_path)
+
+
+# ==================================================
+# TAB — STRESS TEST
+# ==================================================
 with tab_stress:
     st.session_state.current_tab = "StressTest"
-    st.title("Stress Test Analysis")
+    st.title(stress_title)
 
     # -----------------------------
-    # Date selector solo qui
+    # Date selector (solo Stress)
     # -----------------------------
     st.sidebar.subheader("Date (Stress Test)")
-    all_dates = stress_data["Date"].sort_values().unique()
-    # Formatta le date in formato YYYY/MM/DD
-    date_options = [d.strftime("%Y/%m/%d") for d in all_dates]
-    selected_date_str = st.sidebar.selectbox("Select date", date_options)
-    # Converti la data selezionata in datetime per filtrare il DataFrame
-    selected_date = pd.to_datetime(selected_date_str, format="%Y/%m/%d")
 
-    # Filtra per data selezionata
-    df_filtered = stress_data[stress_data["Date"] == selected_date]
+    all_dates = (
+        stress_data["Date"]
+        .dropna()
+        .sort_values()
+        .unique()
+    )
+
+    date_options = [d.strftime("%Y/%m/%d") for d in all_dates]
+
+    selected_date_str = st.sidebar.selectbox(
+        "Select date",
+        date_options
+    )
+
+    selected_date = pd.to_datetime(
+        selected_date_str,
+        format="%Y/%m/%d"
+    )
+
+    df_filtered = stress_data[
+        stress_data["Date"] == selected_date
+    ]
 
     if df_filtered.empty:
         st.warning("No data available for the selected date.")
-    else:
-        # -----------------------------
-        # Plot grouped bar chart per portafoglio
-        # -----------------------------
-        
-        st.subheader("Stress Test PnL")
-        fig_bar = go.Figure()
-        portfolios = df_filtered["Portfolio"].unique()
-        palette = qualitative.Plotly
+        st.stop()
 
-        for i, portfolio in enumerate(portfolios):
-            df_port = df_filtered[df_filtered["Portfolio"] == portfolio]
-            fig_bar.add_trace(
-                go.Bar(
-                    x=df_port["ScenarioName"],
-                    y=df_port["StressPnL"],
-                    name=portfolio,
-                    marker_color=palette[i % len(palette)],
-                    text=df_port["StressPnL"],
-                    textposition="auto"
-                )
-            )
+    # -----------------------------
+    # Stress Test PnL – Grouped bar
+    # -----------------------------
+    st.subheader("Stress Test PnL")
 
-        fig_bar.update_layout(
-            barmode="group",
-            #title=f"Stress Test PnL on {selected_date.strftime('%Y/%m/%d')}",
-            xaxis_title="Scenario",
-            yaxis_title="Stress PnL (bps)",
-            template="plotly_white",
-            height=600
-        )
+    fig_bar = go.Figure()
+    portfolios = df_filtered["Portfolio"].unique()
+    palette = qualitative.Plotly
 
-        st.plotly_chart(fig_bar, use_container_width=True)
-
-        # -----------------------------
-        # Portfolio vs Peer (Peer Analysis style)
-        # -----------------------------
-        st.markdown("---")
-        st.header("Comparison Analysis")
-        
-        selected_portfolio = st.selectbox(
-            "",
-            portfolios,
-            index=0
-        )
-        
-        df_analysis = df_filtered[df_filtered["Portfolio"] == selected_portfolio][
-            ["ScenarioName", "StressPnL"]
+    for i, portfolio in enumerate(portfolios):
+        df_port = df_filtered[
+            df_filtered["Portfolio"] == portfolio
         ]
-        
-        df_peers = df_filtered[df_filtered["Portfolio"] != selected_portfolio][
-            ["ScenarioName", "StressPnL"]
-        ]
-        
-        # Statistiche peer
-        df_peer_stats = (
-            df_peers
-            .groupby("ScenarioName", as_index=False)
-            .agg(
-                peer_median=("StressPnL", "median"),
-                q25=("StressPnL", lambda x: x.quantile(0.25)),
-                q75=("StressPnL", lambda x: x.quantile(0.75))
+
+        fig_bar.add_trace(
+            go.Bar(
+                x=df_port["ScenarioName"],
+                y=df_port["StressPnL"],
+                name=portfolio,
+                marker_color=palette[i % len(palette)],
+                text=df_port["StressPnL"],
+                textposition="auto"
             )
         )
-        
-        df_plot = df_analysis.merge(df_peer_stats, on="ScenarioName")
-        
-        # =====================
-        # Plot
-        # =====================
-        fig = go.Figure()
-        
-        # Barre Q25–Q75
-        for _, r in df_plot.iterrows():
-            fig.add_trace(
-                go.Scatter(
-                    x=[r["q25"], r["q75"]],
-                    y=[r["ScenarioName"], r["ScenarioName"]],
-                    mode="lines",
-                    line=dict(width=14, color="rgba(255,0,0,0.25)"),
-                    showlegend=False,
-                    hoverinfo="skip"
-                )
-            )
-        
-        # Peer median
+
+    fig_bar.update_layout(
+        barmode="group",
+        xaxis_title="Scenario",
+        yaxis_title="Stress PnL (bps)",
+        template="plotly_white",
+        height=600
+    )
+
+    st.plotly_chart(
+        fig_bar,
+        use_container_width=True
+    )
+
+    # -----------------------------
+    # Portfolio vs Peer Analysis
+    # -----------------------------
+    st.markdown("---")
+    st.header("Comparison Analysis")
+
+    selected_portfolio = st.selectbox(
+        "",
+        portfolios,
+        index=0
+    )
+
+    df_analysis = df_filtered[
+        df_filtered["Portfolio"] == selected_portfolio
+    ][["ScenarioName", "StressPnL"]]
+
+    df_peers = df_filtered[
+        df_filtered["Portfolio"] != selected_portfolio
+    ][["ScenarioName", "StressPnL"]]
+
+    df_peer_stats = (
+        df_peers
+        .groupby("ScenarioName", as_index=False)
+        .agg(
+            peer_median=("StressPnL", "median"),
+            q25=("StressPnL", lambda x: x.quantile(0.25)),
+            q75=("StressPnL", lambda x: x.quantile(0.75))
+        )
+    )
+
+    df_plot = df_analysis.merge(
+        df_peer_stats,
+        on="ScenarioName",
+        how="inner"
+    )
+
+    fig = go.Figure()
+
+    # Intervallo Q25–Q75
+    for _, r in df_plot.iterrows():
         fig.add_trace(
             go.Scatter(
-                x=df_plot["peer_median"],
-                y=df_plot["ScenarioName"],
-                mode="markers",
-                marker=dict(size=9, color="red"),
-                name="Peer median"
+                x=[r["q25"], r["q75"]],
+                y=[r["ScenarioName"], r["ScenarioName"]],
+                mode="lines",
+                line=dict(
+                    width=14,
+                    color="rgba(255,0,0,0.25)"
+                ),
+                showlegend=False,
+                hoverinfo="skip"
             )
         )
-        
-        # Portfolio analizzato
-        fig.add_trace(
-            go.Scatter(
-                x=df_plot["StressPnL"],
-                y=df_plot["ScenarioName"],
-                mode="markers",
-                marker=dict(size=14, symbol="star", color="orange"),
-                name=selected_portfolio
-            )
+
+    # Peer median
+    fig.add_trace(
+        go.Scatter(
+            x=df_plot["peer_median"],
+            y=df_plot["ScenarioName"],
+            mode="markers",
+            marker=dict(
+                size=9,
+                color="red"
+            ),
+            name="Peer median"
         )
-        
-        fig.update_layout(
-            #title=f"Comparison Analysis – {selected_portfolio} on {selected_date.strftime('%Y/%m/%d')}",
-            xaxis_title="Stress PnL (bps)",
-            yaxis_title="Scenario",
-            template="plotly_white",
-            height=600,
-            hovermode="y"
+    )
+
+    # Portfolio selezionato
+    fig.add_trace(
+        go.Scatter(
+            x=df_plot["StressPnL"],
+            y=df_plot["ScenarioName"],
+            mode="markers",
+            marker=dict(
+                size=14,
+                symbol="star",
+                color="orange"
+            ),
+            name=selected_portfolio
         )
-        
-        st.plotly_chart(fig, use_container_width=True)
+    )
+
+    fig.update_layout(
+        xaxis_title="Stress PnL (bps)",
+        yaxis_title="Scenario",
+        template="plotly_white",
+        height=600,
+        hovermode="y"
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
