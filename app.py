@@ -567,48 +567,52 @@ with tab_stress:
         key="download_stress_pnl"
     )   
     # -----------------------------
-    # Portfolio vs Peer Analysis
+    # Portfolio vs Bucket Analysis
     # -----------------------------
     st.markdown("---")
     st.subheader("Comparison Analysis")
-
+    
     selected_portfolio = st.selectbox(
         "Analysis portfolio",
         selected_portfolios,
         index=0
     )
-
+    
+    # Dati del portfolio selezionato
     df_analysis = df_filtered[
         df_filtered["Portfolio"] == selected_portfolio
     ][["ScenarioName", "StressPnL"]]
-
-    df_peers = df_filtered[
+    
+    # Dati degli altri portafogli, ora considerati come Bucket
+    df_bucket = df_filtered[
         df_filtered["Portfolio"] != selected_portfolio
     ][["ScenarioName", "StressPnL"]]
-
-    if df_peers.empty:
-        st.warning("Not enough portfolios selected for peer comparison.")
+    
+    if df_bucket.empty:
+        st.warning("Not enough portfolios selected for bucket comparison.")
         st.stop()
-
-    df_peer_stats = (
-        df_peers
+    
+    # Calcolo mediana e quantili del Bucket
+    df_bucket_stats = (
+        df_bucket
         .groupby("ScenarioName", as_index=False)
         .agg(
-            peer_median=("StressPnL", "median"),
+            bucket_median=("StressPnL", "median"),
             q25=("StressPnL", lambda x: x.quantile(0.25)),
             q75=("StressPnL", lambda x: x.quantile(0.75))
         )
     )
-
+    
+    # Merge dei dati per il plot
     df_plot = df_analysis.merge(
-        df_peer_stats,
+        df_bucket_stats,
         on="ScenarioName",
         how="inner"
     )
-
+    
     fig = go.Figure()
-
-    # Q25–Q75 range
+    
+    # Q25–Q75 range (barra)
     for _, r in df_plot.iterrows():
         fig.add_trace(
             go.Scatter(
@@ -616,22 +620,22 @@ with tab_stress:
                 y=[r["ScenarioName"], r["ScenarioName"]],
                 mode="lines",
                 line=dict(width=14, color="rgba(255,0,0,0.25)"),
-                showlegend=False,
+                name="25–75% Bucket range" if _ == 0 else None,  # Solo una volta in legenda
                 hoverinfo="skip"
             )
         )
-
-    # Peer median
+    
+    # Bucket median
     fig.add_trace(
         go.Scatter(
-            x=df_plot["peer_median"],
+            x=df_plot["bucket_median"],
             y=df_plot["ScenarioName"],
             mode="markers",
             marker=dict(size=9, color="red"),
-            name="Peer median"
+            name="Bucket median"
         )
     )
-
+    
     # Selected portfolio
     fig.add_trace(
         go.Scatter(
@@ -642,7 +646,7 @@ with tab_stress:
             name=selected_portfolio
         )
     )
-
+    
     fig.update_layout(
         xaxis_title="Stress PnL (bps)",
         yaxis_title="Scenario",
@@ -650,5 +654,31 @@ with tab_stress:
         height=600,
         hovermode="y"
     )
-
+    
     st.plotly_chart(fig, use_container_width=True)
+    
+    # -----------------------------
+    # Bottone di download Excel dei dati del grafico
+    # -----------------------------
+    from io import BytesIO
+    
+    # Dati da scaricare
+    df_download = df_plot.rename(columns={
+        "bucket_median": "Bucket Median",
+        "q25": "25% Quantile",
+        "q75": "75% Quantile",
+        "StressPnL": selected_portfolio
+    })
+    
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df_download.to_excel(writer, sheet_name="Portfolio vs Bucket", index=False)
+    
+    st.download_button(
+        label=f"📥 Download {selected_portfolio} vs Bucket data as Excel",
+        data=output.getvalue(),
+        file_name=f"{selected_portfolio}_vs_bucket.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        key=f"download_{selected_portfolio}_vs_bucket"
+    )
+
