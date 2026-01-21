@@ -320,7 +320,7 @@ with tab_stress:
         )
         
         fig.update_layout(
-            title=f"Comparison Analysis – {selected_portfolio} on {selected_date.strftime('%Y/%m/%d')}",
+            #title=f"Comparison Analysis – {selected_portfolio} on {selected_date.strftime('%Y/%m/%d')}",
             xaxis_title="Stress PnL (bps)",
             yaxis_title="Scenario",
             template="plotly_white",
