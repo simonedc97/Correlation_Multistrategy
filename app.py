@@ -96,7 +96,7 @@ with tab_corr:
     # -----------------------------
     # Series selector
     # -----------------------------
-    st.sidebar.subheader("Series")
+    st.sidebar.subheader("Series (Correlation)")
     selected_series = st.sidebar.multiselect(
         "Select series",
         options=df.columns.tolist(),
@@ -421,7 +421,7 @@ with tab_stress:
     # -----------------------------
     # Portfolio selector
     # -----------------------------
-    st.sidebar.subheader("Portfolios")
+    st.sidebar.subheader("Series (Stresst Test)")
 
     available_portfolios = (
         df_filtered["Portfolio"]
@@ -432,7 +432,7 @@ with tab_stress:
     )
 
     selected_portfolios = st.sidebar.multiselect(
-        "Select portfolios",
+        "Select series",
         options=available_portfolios,
         default=available_portfolios
     )
@@ -448,7 +448,7 @@ with tab_stress:
     # -----------------------------
     # Scenario selector
     # -----------------------------
-    st.sidebar.subheader("Scenarios")
+    st.sidebar.subheader("Scenarios (Stress Test)")
 
     available_scenarios = (
         df_filtered["ScenarioName"]
