@@ -189,6 +189,22 @@ with tab_corr:
     stats_df["Max Date"] = pd.to_datetime(stats_df["Max Date"]).dt.strftime("%d/%m/%Y")
     st.dataframe(stats_df.style.format({"Mean (%)": "{:.2f}%", "Min (%)": "{:.2f}%", "Max (%)": "{:.2f}%"}), use_container_width=True)
 
+    # -----------------------------
+    # Bottone di download Excel
+    # -----------------------------
+    from io import BytesIO
+    
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        stats_df.to_excel(writer, sheet_name="Summary Stats")
+    
+    st.download_button(
+        label="📥 Download summary statistics as Excel",
+        data=output.getvalue(),
+        file_name="summary_statistics.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        key="download_summary_stats"
+    )
 # ==================================================
 # TAB 2 — STRESS TEST
 # ==================================================
