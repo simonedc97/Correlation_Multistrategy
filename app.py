@@ -632,7 +632,7 @@ with tab_stress:
             y=df_plot["ScenarioName"],
             mode="markers",
             marker=dict(size=9, color="red"),
-            name="Bucket median"
+            name="Bucket Portfolio median"
         )
     )
     
@@ -664,7 +664,7 @@ with tab_stress:
     
     # Dati da scaricare
     df_download = df_plot.rename(columns={
-        "bucket_median": "Bucket Median",
+        "bucket_median": "Bucket Portfolio Median",
         "q25": "25% Quantile",
         "q75": "75% Quantile",
         "StressPnL": selected_portfolio
