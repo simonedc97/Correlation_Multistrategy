@@ -551,6 +551,21 @@ with tab_stress:
 
     st.plotly_chart(fig_bar, use_container_width=True)
 
+    df_download = df_filtered[df_filtered["Portfolio"].isin(selected_portfolios)][
+        ["Portfolio", "ScenarioName", "StressPnL"]
+    ]
+    
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df_download.to_excel(writer, sheet_name="Stress Test PnL", index=False)
+    
+    st.download_button(
+        label="📥 Download Stress PnL data as Excel",
+        data=output.getvalue(),
+        file_name="stress_test_pnl.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        key="download_stress_pnl"
+    )   
     # -----------------------------
     # Portfolio vs Peer Analysis
     # -----------------------------
