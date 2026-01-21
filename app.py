@@ -142,7 +142,20 @@ with tab_corr:
         yaxis_title="Correlation"
     )
     st.plotly_chart(fig_ts, use_container_width=True)
-
+    # Dati sottostanti al grafico (in percentuale, coerente con il grafico)
+    df_download = df[selected_series] * 100
+    
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df_download.to_excel(writer, sheet_name="Time Series Data")
+    
+    st.download_button(
+        label="📥 Download time series data as Excel",
+        data=output.getvalue(),
+        file_name="time_series_data.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        key="download_time_series"
+    )
     # -----------------------------
     # Radar chart
     # -----------------------------
