@@ -288,6 +288,52 @@ stress_data = load_stress_data(stress_path)
 
 
 # ==================================================
+# STRESS TEST — DATA LOADING
+# ==================================================
+@st.cache_data
+def load_stress_data(path):
+    xls = pd.ExcelFile(path)
+    records = []
+
+    for sheet_name in xls.sheet_names:
+        if "_" in sheet_name:
+            portfolio, scenario_name = sheet_name.split("_", 1)
+        else:
+            portfolio, scenario_name = sheet_name, sheet_name
+
+        df = pd.read_excel(xls, sheet_name=sheet_name)
+
+        df = df.rename(columns={
+            df.columns[0]: "Date",
+            df.columns[2]: "Scenario",
+            df.columns[4]: "StressPnL"
+        })
+
+        df["Date"] = pd.to_datetime(df["Date"])
+        df["Portfolio"] = portfolio
+        df["ScenarioName"] = scenario_name
+
+        records.append(
+            df[["Date", "Scenario", "StressPnL", "Portfolio", "ScenarioName"]]
+        )
+
+    return pd.concat(records, ignore_index=True)
+
+
+# --------------------------------------------------
+# Select Stress Test file based on chart_type
+# --------------------------------------------------
+if chart_type == "EGQ vs Index and Cash":
+    stress_path = "stress_test_totEGQ.xlsx"
+    stress_title = "Stress Test Analysis – EGQ"
+else:
+    stress_path = "stress_test_totE7X.xlsx"
+    stress_title = "Stress Test Analysis – E7X"
+
+stress_data = load_stress_data(stress_path)
+
+
+# ==================================================
 # TAB — STRESS TEST
 # ==================================================
 with tab_stress:
@@ -295,7 +341,7 @@ with tab_stress:
     st.title(stress_title)
 
     # -----------------------------
-    # Date selector (solo Stress)
+    # Date selector
     # -----------------------------
     st.sidebar.subheader("Date (Stress Test)")
 
@@ -325,6 +371,39 @@ with tab_stress:
     if df_filtered.empty:
         st.warning("No data available for the selected date.")
         st.stop()
+
+    # -----------------------------
+    # Series selector (Stress Test)
+    # -----------------------------
+    st.sidebar.subheader("Series (Stress Test)")
+
+    available_scenarios = (
+        df_filtered["ScenarioName"]
+        .dropna()
+        .sort_values()
+        .unique()
+        .tolist()
+    )
+
+    selected_scenarios = st.sidebar.multiselect(
+        "Select stress scenarios",
+        options=available_scenarios,
+        default=available_scenarios
+    )
+
+    if not selected_scenarios:
+        st.warning("Please select at least one stress scenario.")
+        st.stop()
+
+    df_filtered = df_filtered[
+        df_filtered["ScenarioName"].isin(selected_scenarios)
+    ]
+
+    df_filtered["ScenarioName"] = pd.Categorical(
+        df_filtered["ScenarioName"],
+        categories=selected_scenarios,
+        ordered=True
+    )
 
     # -----------------------------
     # Stress Test PnL – Grouped bar
@@ -359,10 +438,7 @@ with tab_stress:
         height=600
     )
 
-    st.plotly_chart(
-        fig_bar,
-        use_container_width=True
-    )
+    st.plotly_chart(fig_bar, use_container_width=True)
 
     # -----------------------------
     # Portfolio vs Peer Analysis
@@ -371,7 +447,7 @@ with tab_stress:
     st.header("Comparison Analysis")
 
     selected_portfolio = st.selectbox(
-        "",
+        "Select portfolio",
         portfolios,
         index=0
     )
@@ -402,17 +478,14 @@ with tab_stress:
 
     fig = go.Figure()
 
-    # Intervallo Q25–Q75
+    # Q25–Q75 range
     for _, r in df_plot.iterrows():
         fig.add_trace(
             go.Scatter(
                 x=[r["q25"], r["q75"]],
                 y=[r["ScenarioName"], r["ScenarioName"]],
                 mode="lines",
-                line=dict(
-                    width=14,
-                    color="rgba(255,0,0,0.25)"
-                ),
+                line=dict(width=14, color="rgba(255,0,0,0.25)"),
                 showlegend=False,
                 hoverinfo="skip"
             )
@@ -424,25 +497,18 @@ with tab_stress:
             x=df_plot["peer_median"],
             y=df_plot["ScenarioName"],
             mode="markers",
-            marker=dict(
-                size=9,
-                color="red"
-            ),
+            marker=dict(size=9, color="red"),
             name="Peer median"
         )
     )
 
-    # Portfolio selezionato
+    # Selected portfolio
     fig.add_trace(
         go.Scatter(
             x=df_plot["StressPnL"],
             y=df_plot["ScenarioName"],
             mode="markers",
-            marker=dict(
-                size=14,
-                symbol="star",
-                color="orange"
-            ),
+            marker=dict(size=14, symbol="star", color="orange"),
             name=selected_portfolio
         )
     )
@@ -455,7 +521,4 @@ with tab_stress:
         hovermode="y"
     )
 
-    st.plotly_chart(
-        fig,
-        use_container_width=True
-    )
+    st.plotly_chart(fig, use_container_width=True)
