@@ -328,7 +328,7 @@ if chart_type == "EGQ vs Index and Cash":
     stress_title = "EGQ vs Index and Cash"
 else:
     stress_path = "stress_test_totE7X.xlsx"
-    stress_title = "Stress Test Analysis – E7X"
+    stress_title = "E7X vs Funds"
 
 stress_data = load_stress_data(stress_path)
 
@@ -371,10 +371,10 @@ def load_stress_data(path):
 # --------------------------------------------------
 if chart_type == "EGQ vs Index and Cash":
     stress_path = "stress_test_totEGQ.xlsx"
-    stress_title = "Stress Test Analysis – EGQ"
+    stress_title = "EGQ vs Index and Cash"
 else:
     stress_path = "stress_test_totE7X.xlsx"
-    stress_title = "Stress Test Analysis – E7X"
+    stress_title = "E7X vs Funds"
 
 stress_data = load_stress_data(stress_path)
 
