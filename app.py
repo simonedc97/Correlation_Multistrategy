@@ -657,24 +657,17 @@ with tab_stress:
     
     st.plotly_chart(fig, use_container_width=True)
     
-    # Nota sotto il grafico dentro box colorato responsive
-    st.markdown(
-        """
-        <div style="
-            background-color: rgba(255,0,0,0.25);
-            padding: 8px 12px;
-            border-radius: 6px;
-            display: inline-block;
-            max-width: 100%;
-            font-size: 0.85em;
-            color: black;
-            word-wrap: break-word;
-        ">
-            Note: the shaded areas represent the dispersion between the 25th and 75th percentile of the Bucket.
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+st.markdown(
+    """
+    <div style="display: flex; align-items: center;">
+        <sub>Note: the shaded areas</sub>
+        <div style="width: 20px; height: 14px; background-color: rgba(255,0,0,0.25); margin-right: 8px; border: 1px solid rgba(0,0,0,0.1);"></div>
+        <sub>represent the dispersion between the 25th and 75th percentile of the Bucket.</sub>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
 
 
     # -----------------------------
