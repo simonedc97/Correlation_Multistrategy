@@ -529,7 +529,7 @@ with tab_stress:
     st.subheader("Comparison Analysis")
 
     selected_portfolio = st.selectbox(
-        "Select portfolio for comparison",
+        "Analysis portfolio",
         selected_portfolios,
         index=0
     )
