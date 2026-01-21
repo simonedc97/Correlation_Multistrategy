@@ -421,7 +421,7 @@ with tab_stress:
     # -----------------------------
     # Portfolio selector
     # -----------------------------
-    st.sidebar.subheader("Series (Stresst Test)")
+    st.sidebar.subheader("Series (Stress Test)")
 
     available_portfolios = (
         df_filtered["Portfolio"]
