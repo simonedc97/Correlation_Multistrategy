@@ -241,34 +241,58 @@ stress_data = load_stress_data(stress_path)
 # ==================================================
 # TAB — STRESS TEST
 # ==================================================
+# --------------------------------------------------
+# Funzione per caricamento dati Stress Test
+# --------------------------------------------------
+@st.cache_data
+def load_stress_data(path):
+    xls = pd.ExcelFile(path)
+    records = []
+
+    for sheet_name in xls.sheet_names:
+        if "_" in sheet_name:
+            portfolio, scenario_name = sheet_name.split("_", 1)
+        else:
+            portfolio, scenario_name = sheet_name, sheet_name
+
+        df = pd.read_excel(xls, sheet_name=sheet_name)
+
+        df = df.rename(columns={
+            df.columns[0]: "Date",
+            df.columns[2]: "Scenario",
+            df.columns[4]: "StressPnL"
+        })
+
+        df["Date"] = pd.to_datetime(df["Date"])
+        df["Portfolio"] = portfolio
+        df["ScenarioName"] = scenario_name
+
+        records.append(
+            df[["Date", "Scenario", "StressPnL", "Portfolio", "ScenarioName"]]
+        )
+
+    return pd.concat(records, ignore_index=True)
+
+
+# --------------------------------------------------
+# Selezione file Stress Test in base al chart_type
+# --------------------------------------------------
+if chart_type == "EGQ vs Index and Cash":
+    stress_path = "stress_test_totEGQ.xlsx"
+    stress_title = "Stress Test Analysis – EGQ"
+else:
+    stress_path = "stress_test_totE7X.xlsx"
+    stress_title = "Stress Test Analysis – E7X"
+
+stress_data = load_stress_data(stress_path)
+
+
+# ==================================================
+# TAB — STRESS TEST
+# ==================================================
 with tab_stress:
     st.session_state.current_tab = "StressTest"
     st.title(stress_title)
-
-    # --------------------------------------------------
-    # Costruzione portafogli Stress Test
-    # --------------------------------------------------
-    selected_series_corr = st.session_state.get("selected_series", [])
-    
-    if chart_type == "EGQ vs Index and Cash":
-        reference_portfolio = "EGQ"
-    else:
-        reference_portfolio = "E7X"
-    
-    stress_portfolios = list(
-        set(selected_series_corr + [reference_portfolio])
-    )
-    
-    # --------------------------------------------------
-    # Filtro Stress Test
-    # --------------------------------------------------
-    stress_data = stress_data[
-        stress_data["Portfolio"].isin(stress_portfolios)
-    ]
-    
-    if stress_data.empty:
-        st.warning("No Stress Test data for selected series + reference portfolio.")
-        st.stop()
 
     # -----------------------------
     # Date selector (solo Stress)
