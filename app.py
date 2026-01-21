@@ -63,7 +63,20 @@ def load_stress_data(path):
         records.append(df[["Date", "Scenario", "StressPnL", "Portfolio", "ScenarioName"]])
     return pd.concat(records, ignore_index=True)
 
+# Caricamento dati Stress Test
 stress_data = load_stress_data("stress_test_totE7X.xlsx")
+
+# --------------------------------------------------
+# Funzione per creare file Excel in memoria
+# --------------------------------------------------
+def to_excel_bytes(df_dict):
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        for sheet_name, df in df_dict.items():
+            df.to_excel(writer, sheet_name=sheet_name, index=True)
+        writer.save()
+    output.seek(0)
+    return output
 
 # ==================================================
 # TAB 1 — CORRELATION
@@ -81,9 +94,7 @@ with tab_corr:
         chart_title = "E7X vs Funds"
         reference_asset = "E7X"
 
-    # -----------------------------
-    # Date range picker solo qui
-    # -----------------------------
+    # Date range picker
     st.sidebar.subheader("Date range (Correlation)")
     start_date, end_date = st.sidebar.date_input(
         "Select start and end date",
@@ -93,9 +104,7 @@ with tab_corr:
     )
     df = df.loc[pd.to_datetime(start_date):pd.to_datetime(end_date)]
 
-    # -----------------------------
     # Series selector
-    # -----------------------------
     st.sidebar.subheader("Series (Correlation)")
     selected_series = st.sidebar.multiselect(
         "Select series",
@@ -106,15 +115,11 @@ with tab_corr:
         st.warning("Please select at least one series.")
         st.stop()
 
-    # -----------------------------
     # Color map
-    # -----------------------------
     palette = qualitative.Plotly
     color_map = {s: palette[i % len(palette)] for i, s in enumerate(selected_series)}
 
-    # -----------------------------
     # Title
-    # -----------------------------
     st.title(chart_title)
 
     # -----------------------------
@@ -189,329 +194,84 @@ with tab_corr:
     stats_df["Max Date"] = pd.to_datetime(stats_df["Max Date"]).dt.strftime("%d/%m/%Y")
     st.dataframe(stats_df.style.format({"Mean (%)": "{:.2f}%", "Min (%)": "{:.2f}%", "Max (%)": "{:.2f}%"}), use_container_width=True)
 
+    # -----------------------------
+    # Download button — Summary statistics
+    # -----------------------------
+    excel_bytes = to_excel_bytes({"Summary Statistics": stats_df})
+    st.download_button(
+        label="Download Summary Statistics (XLSX)",
+        data=excel_bytes,
+        file_name=f"Summary_Statistics_{chart_type}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+    # -----------------------------
+    # Download button — Correlation Time Series
+    # -----------------------------
+    excel_bytes_ts = to_excel_bytes({"Correlation Time Series": df[selected_series]})
+    st.download_button(
+        label="Download Correlation Time Series (XLSX)",
+        data=excel_bytes_ts,
+        file_name=f"Correlation_Time_Series_{chart_type}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
 # ==================================================
 # TAB 2 — STRESS TEST
 # ==================================================
-# --------------------------------------------------
-# Funzione per caricamento dati Stress Test
-# --------------------------------------------------
-@st.cache_data
-def load_stress_data(path):
-    xls = pd.ExcelFile(path)
-    records = []
-
-    for sheet_name in xls.sheet_names:
-        if "_" in sheet_name:
-            portfolio, scenario_name = sheet_name.split("_", 1)
-        else:
-            portfolio, scenario_name = sheet_name, sheet_name
-
-        df = pd.read_excel(xls, sheet_name=sheet_name)
-
-        df = df.rename(columns={
-            df.columns[0]: "Date",
-            df.columns[2]: "Scenario",
-            df.columns[4]: "StressPnL"
-        })
-
-        df["Date"] = pd.to_datetime(df["Date"])
-        df["Portfolio"] = portfolio
-        df["ScenarioName"] = scenario_name
-
-        records.append(
-            df[["Date", "Scenario", "StressPnL", "Portfolio", "ScenarioName"]]
-        )
-
-    return pd.concat(records, ignore_index=True)
-
-
-# --------------------------------------------------
-# Selezione file Stress Test in base al chart_type
-# --------------------------------------------------
-if chart_type == "EGQ vs Index and Cash":
-    stress_path = "stress_test_totEGQ.xlsx"
-    stress_title = "EGQ vs Index and Cash"
-else:
-    stress_path = "stress_test_totE7X.xlsx"
-    stress_title = "E7X vs Funds"
-
-stress_data = load_stress_data(stress_path)
-
-
-# ==================================================
-# TAB — STRESS TEST
-# ==================================================
-# --------------------------------------------------
-# Funzione per caricamento dati Stress Test
-# --------------------------------------------------
-@st.cache_data
-def load_stress_data(path):
-    xls = pd.ExcelFile(path)
-    records = []
-
-    for sheet_name in xls.sheet_names:
-        if "_" in sheet_name:
-            portfolio, scenario_name = sheet_name.split("_", 1)
-        else:
-            portfolio, scenario_name = sheet_name, sheet_name
-
-        df = pd.read_excel(xls, sheet_name=sheet_name)
-
-        df = df.rename(columns={
-            df.columns[0]: "Date",
-            df.columns[2]: "Scenario",
-            df.columns[4]: "StressPnL"
-        })
-
-        df["Date"] = pd.to_datetime(df["Date"])
-        df["Portfolio"] = portfolio
-        df["ScenarioName"] = scenario_name
-
-        records.append(
-            df[["Date", "Scenario", "StressPnL", "Portfolio", "ScenarioName"]]
-        )
-
-    return pd.concat(records, ignore_index=True)
-
-
-# --------------------------------------------------
-# Selezione file Stress Test in base al chart_type
-# --------------------------------------------------
-if chart_type == "EGQ vs Index and Cash":
-    stress_path = "stress_test_totEGQ.xlsx"
-    stress_title = "EGQ vs Index and Cash"
-else:
-    stress_path = "stress_test_totE7X.xlsx"
-    stress_title = "E7X vs Funds"
-
-stress_data = load_stress_data(stress_path)
-
-
-# ==================================================
-# STRESS TEST — DATA LOADING
-# ==================================================
-@st.cache_data
-def load_stress_data(path):
-    xls = pd.ExcelFile(path)
-    records = []
-
-    for sheet_name in xls.sheet_names:
-        if "_" in sheet_name:
-            portfolio, scenario_name = sheet_name.split("_", 1)
-        else:
-            portfolio, scenario_name = sheet_name, sheet_name
-
-        df = pd.read_excel(xls, sheet_name=sheet_name)
-
-        df = df.rename(columns={
-            df.columns[0]: "Date",
-            df.columns[2]: "Scenario",
-            df.columns[4]: "StressPnL"
-        })
-
-        df["Date"] = pd.to_datetime(df["Date"])
-        df["Portfolio"] = portfolio
-        df["ScenarioName"] = scenario_name
-
-        records.append(
-            df[["Date", "Scenario", "StressPnL", "Portfolio", "ScenarioName"]]
-        )
-
-    return pd.concat(records, ignore_index=True)
-
-
-# --------------------------------------------------
-# Select Stress Test file based on chart_type
-# --------------------------------------------------
-if chart_type == "EGQ vs Index and Cash":
-    stress_path = "stress_test_totEGQ.xlsx"
-    stress_title = "EGQ vs Index and Cash"
-else:
-    stress_path = "stress_test_totE7X.xlsx"
-    stress_title = "E7X vs Funds"
-
-stress_data = load_stress_data(stress_path)
-
-
-# ==================================================
-# STRESS TEST — DATA LOADING
-# ==================================================
-@st.cache_data
-def load_stress_data(path):
-    xls = pd.ExcelFile(path)
-    records = []
-
-    for sheet_name in xls.sheet_names:
-        if "_" in sheet_name:
-            portfolio, scenario_name = sheet_name.split("_", 1)
-        else:
-            portfolio, scenario_name = sheet_name, sheet_name
-
-        df = pd.read_excel(xls, sheet_name=sheet_name)
-
-        df = df.rename(columns={
-            df.columns[0]: "Date",
-            df.columns[2]: "Scenario",
-            df.columns[4]: "StressPnL"
-        })
-
-        df["Date"] = pd.to_datetime(df["Date"])
-        df["Portfolio"] = portfolio
-        df["ScenarioName"] = scenario_name
-
-        records.append(
-            df[["Date", "Scenario", "StressPnL", "Portfolio", "ScenarioName"]]
-        )
-
-    return pd.concat(records, ignore_index=True)
-
-
-# --------------------------------------------------
-# Select Stress Test file based on chart_type
-# --------------------------------------------------
-if chart_type == "EGQ vs Index and Cash":
-    stress_path = "stress_test_totEGQ.xlsx"
-    stress_title = "EGQ vs Index and Cash"
-else:
-    stress_path = "stress_test_totE7X.xlsx"
-    stress_title = "E7X vs Funds"
-
-stress_data = load_stress_data(stress_path)
-
-
-# ==================================================
-# TAB — STRESS TEST
-# ==================================================
 with tab_stress:
     st.session_state.current_tab = "StressTest"
-    st.title(stress_title)
+    st.title(chart_type)
 
-    # -----------------------------
     # Date selector
-    # -----------------------------
     st.sidebar.subheader("Date (Stress Test)")
-
-    all_dates = (
-        stress_data["Date"]
-        .dropna()
-        .sort_values()
-        .unique()
-    )
-
+    all_dates = stress_data["Date"].dropna().sort_values().unique()
     date_options = [d.strftime("%Y/%m/%d") for d in all_dates]
+    selected_date_str = st.sidebar.selectbox("Select date", date_options)
+    selected_date = pd.to_datetime(selected_date_str, format="%Y/%m/%d")
 
-    selected_date_str = st.sidebar.selectbox(
-        "Select date",
-        date_options
-    )
-
-    selected_date = pd.to_datetime(
-        selected_date_str,
-        format="%Y/%m/%d"
-    )
-
-    df_filtered = stress_data[
-        stress_data["Date"] == selected_date
-    ]
-
+    df_filtered = stress_data[stress_data["Date"] == selected_date]
     if df_filtered.empty:
         st.warning("No data available for the selected date.")
         st.stop()
 
-    # -----------------------------
     # Portfolio selector
-    # -----------------------------
     st.sidebar.subheader("Series (Stress Test)")
-
-    available_portfolios = (
-        df_filtered["Portfolio"]
-        .dropna()
-        .sort_values()
-        .unique()
-        .tolist()
-    )
-
-    selected_portfolios = st.sidebar.multiselect(
-        "Select series",
-        options=available_portfolios,
-        default=available_portfolios
-    )
-
+    available_portfolios = df_filtered["Portfolio"].dropna().sort_values().unique().tolist()
+    selected_portfolios = st.sidebar.multiselect("Select series", options=available_portfolios, default=available_portfolios)
     if not selected_portfolios:
         st.warning("Please select at least one portfolio.")
         st.stop()
+    df_filtered = df_filtered[df_filtered["Portfolio"].isin(selected_portfolios)]
 
-    df_filtered = df_filtered[
-        df_filtered["Portfolio"].isin(selected_portfolios)
-    ]
-
-    # -----------------------------
     # Scenario selector
-    # -----------------------------
     st.sidebar.subheader("Scenarios (Stress Test)")
-
-    available_scenarios = (
-        df_filtered["ScenarioName"]
-        .dropna()
-        .sort_values()
-        .unique()
-        .tolist()
-    )
-
-    selected_scenarios = st.sidebar.multiselect(
-        "Select stress scenarios",
-        options=available_scenarios,
-        default=available_scenarios
-    )
-
+    available_scenarios = df_filtered["ScenarioName"].dropna().sort_values().unique().tolist()
+    selected_scenarios = st.sidebar.multiselect("Select stress scenarios", options=available_scenarios, default=available_scenarios)
     if not selected_scenarios:
         st.warning("Please select at least one stress scenario.")
         st.stop()
+    df_filtered = df_filtered[df_filtered["ScenarioName"].isin(selected_scenarios)]
 
-    df_filtered = df_filtered[
-        df_filtered["ScenarioName"].isin(selected_scenarios)
-    ]
+    df_filtered["ScenarioName"] = pd.Categorical(df_filtered["ScenarioName"], categories=selected_scenarios, ordered=True)
+    df_filtered["Portfolio"] = pd.Categorical(df_filtered["Portfolio"], categories=selected_portfolios, ordered=True)
 
-    # Preserve user order
-    df_filtered["ScenarioName"] = pd.Categorical(
-        df_filtered["ScenarioName"],
-        categories=selected_scenarios,
-        ordered=True
-    )
-
-    df_filtered["Portfolio"] = pd.Categorical(
-        df_filtered["Portfolio"],
-        categories=selected_portfolios,
-        ordered=True
-    )
-
-    # -----------------------------
     # Stress Test PnL – Grouped bar
-    # -----------------------------
     st.subheader("Stress Test PnL")
-
     fig_bar = go.Figure()
     palette = qualitative.Plotly
-
     for i, portfolio in enumerate(selected_portfolios):
-        df_port = df_filtered[
-            df_filtered["Portfolio"] == portfolio
-        ]
-
+        df_port = df_filtered[df_filtered["Portfolio"] == portfolio]
         if df_port.empty:
             continue
-
-        fig_bar.add_trace(
-            go.Bar(
-                x=df_port["ScenarioName"],
-                y=df_port["StressPnL"],
-                name=portfolio,
-                marker_color=palette[i % len(palette)],
-                text=df_port["StressPnL"],
-                textposition="auto"
-            )
-        )
-
+        fig_bar.add_trace(go.Bar(
+            x=df_port["ScenarioName"],
+            y=df_port["StressPnL"],
+            name=portfolio,
+            marker_color=palette[i % len(palette)],
+            text=df_port["StressPnL"],
+            textposition="auto"
+        ))
     fig_bar.update_layout(
         barmode="group",
         xaxis_title="Scenario",
@@ -519,86 +279,61 @@ with tab_stress:
         template="plotly_white",
         height=600
     )
-
     st.plotly_chart(fig_bar, use_container_width=True)
 
-    # -----------------------------
-    # Portfolio vs Peer Analysis
-    # -----------------------------
-    st.markdown("---")
-    st.subheader("Comparison Analysis")
-
-    selected_portfolio = st.selectbox(
-        "Analysis portfolio",
-        selected_portfolios,
-        index=0
+    # Download button — Stress Test PnL
+    excel_bytes_stress = to_excel_bytes({"Stress Test PnL": df_filtered})
+    st.download_button(
+        label="Download Stress Test PnL (XLSX)",
+        data=excel_bytes_stress,
+        file_name=f"Stress_Test_PnL_{chart_type}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-    df_analysis = df_filtered[
-        df_filtered["Portfolio"] == selected_portfolio
-    ][["ScenarioName", "StressPnL"]]
+    # Portfolio vs Peer Analysis
+    st.markdown("---")
+    st.subheader("Comparison Analysis")
+    selected_portfolio = st.selectbox("Analysis portfolio", selected_portfolios, index=0)
 
-    df_peers = df_filtered[
-        df_filtered["Portfolio"] != selected_portfolio
-    ][["ScenarioName", "StressPnL"]]
+    df_analysis = df_filtered[df_filtered["Portfolio"] == selected_portfolio][["ScenarioName", "StressPnL"]]
+    df_peers = df_filtered[df_filtered["Portfolio"] != selected_portfolio][["ScenarioName", "StressPnL"]]
 
     if df_peers.empty:
         st.warning("Not enough portfolios selected for peer comparison.")
         st.stop()
 
-    df_peer_stats = (
-        df_peers
-        .groupby("ScenarioName", as_index=False)
-        .agg(
-            peer_median=("StressPnL", "median"),
-            q25=("StressPnL", lambda x: x.quantile(0.25)),
-            q75=("StressPnL", lambda x: x.quantile(0.75))
-        )
+    df_peer_stats = df_peers.groupby("ScenarioName", as_index=False).agg(
+        peer_median=("StressPnL", "median"),
+        q25=("StressPnL", lambda x: x.quantile(0.25)),
+        q75=("StressPnL", lambda x: x.quantile(0.75))
     )
 
-    df_plot = df_analysis.merge(
-        df_peer_stats,
-        on="ScenarioName",
-        how="inner"
-    )
+    df_plot = df_analysis.merge(df_peer_stats, on="ScenarioName", how="inner")
 
     fig = go.Figure()
-
-    # Q25–Q75 range
     for _, r in df_plot.iterrows():
-        fig.add_trace(
-            go.Scatter(
-                x=[r["q25"], r["q75"]],
-                y=[r["ScenarioName"], r["ScenarioName"]],
-                mode="lines",
-                line=dict(width=14, color="rgba(255,0,0,0.25)"),
-                showlegend=False,
-                hoverinfo="skip"
-            )
-        )
-
-    # Peer median
-    fig.add_trace(
-        go.Scatter(
-            x=df_plot["peer_median"],
-            y=df_plot["ScenarioName"],
-            mode="markers",
-            marker=dict(size=9, color="red"),
-            name="Peer median"
-        )
-    )
-
-    # Selected portfolio
-    fig.add_trace(
-        go.Scatter(
-            x=df_plot["StressPnL"],
-            y=df_plot["ScenarioName"],
-            mode="markers",
-            marker=dict(size=14, symbol="star", color="orange"),
-            name=selected_portfolio
-        )
-    )
-
+        fig.add_trace(go.Scatter(
+            x=[r["q25"], r["q75"]],
+            y=[r["ScenarioName"], r["ScenarioName"]],
+            mode="lines",
+            line=dict(width=14, color="rgba(255,0,0,0.25)"),
+            showlegend=False,
+            hoverinfo="skip"
+        ))
+    fig.add_trace(go.Scatter(
+        x=df_plot["peer_median"],
+        y=df_plot["ScenarioName"],
+        mode="markers",
+        marker=dict(size=9, color="red"),
+        name="Peer median"
+    ))
+    fig.add_trace(go.Scatter(
+        x=df_plot["StressPnL"],
+        y=df_plot["ScenarioName"],
+        mode="markers",
+        marker=dict(size=14, symbol="star", color="orange"),
+        name=selected_portfolio
+    ))
     fig.update_layout(
         xaxis_title="Stress PnL (bps)",
         yaxis_title="Scenario",
@@ -606,5 +341,13 @@ with tab_stress:
         height=600,
         hovermode="y"
     )
-
     st.plotly_chart(fig, use_container_width=True)
+
+    # Download button — Comparison Analysis
+    excel_bytes_comp = to_excel_bytes({"Comparison Analysis": df_plot})
+    st.download_button(
+        label="Download Comparison Analysis (XLSX)",
+        data=excel_bytes_comp,
+        file_name=f"Comparison_Analysis_{chart_type}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
