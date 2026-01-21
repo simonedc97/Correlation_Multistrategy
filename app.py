@@ -334,6 +334,52 @@ stress_data = load_stress_data(stress_path)
 
 
 # ==================================================
+# STRESS TEST — DATA LOADING
+# ==================================================
+@st.cache_data
+def load_stress_data(path):
+    xls = pd.ExcelFile(path)
+    records = []
+
+    for sheet_name in xls.sheet_names:
+        if "_" in sheet_name:
+            portfolio, scenario_name = sheet_name.split("_", 1)
+        else:
+            portfolio, scenario_name = sheet_name, sheet_name
+
+        df = pd.read_excel(xls, sheet_name=sheet_name)
+
+        df = df.rename(columns={
+            df.columns[0]: "Date",
+            df.columns[2]: "Scenario",
+            df.columns[4]: "StressPnL"
+        })
+
+        df["Date"] = pd.to_datetime(df["Date"])
+        df["Portfolio"] = portfolio
+        df["ScenarioName"] = scenario_name
+
+        records.append(
+            df[["Date", "Scenario", "StressPnL", "Portfolio", "ScenarioName"]]
+        )
+
+    return pd.concat(records, ignore_index=True)
+
+
+# --------------------------------------------------
+# Select Stress Test file based on chart_type
+# --------------------------------------------------
+if chart_type == "EGQ vs Index and Cash":
+    stress_path = "stress_test_totEGQ.xlsx"
+    stress_title = "Stress Test Analysis – EGQ"
+else:
+    stress_path = "stress_test_totE7X.xlsx"
+    stress_title = "Stress Test Analysis – E7X"
+
+stress_data = load_stress_data(stress_path)
+
+
+# ==================================================
 # TAB — STRESS TEST
 # ==================================================
 with tab_stress:
@@ -373,9 +419,36 @@ with tab_stress:
         st.stop()
 
     # -----------------------------
-    # Series selector (Stress Test)
+    # Portfolio selector
     # -----------------------------
-    st.sidebar.subheader("Series (Stress Test)")
+    st.sidebar.subheader("Portfolios")
+
+    available_portfolios = (
+        df_filtered["Portfolio"]
+        .dropna()
+        .sort_values()
+        .unique()
+        .tolist()
+    )
+
+    selected_portfolios = st.sidebar.multiselect(
+        "Select portfolios",
+        options=available_portfolios,
+        default=available_portfolios
+    )
+
+    if not selected_portfolios:
+        st.warning("Please select at least one portfolio.")
+        st.stop()
+
+    df_filtered = df_filtered[
+        df_filtered["Portfolio"].isin(selected_portfolios)
+    ]
+
+    # -----------------------------
+    # Scenario selector
+    # -----------------------------
+    st.sidebar.subheader("Scenarios")
 
     available_scenarios = (
         df_filtered["ScenarioName"]
@@ -399,9 +472,16 @@ with tab_stress:
         df_filtered["ScenarioName"].isin(selected_scenarios)
     ]
 
+    # Preserve user order
     df_filtered["ScenarioName"] = pd.Categorical(
         df_filtered["ScenarioName"],
         categories=selected_scenarios,
+        ordered=True
+    )
+
+    df_filtered["Portfolio"] = pd.Categorical(
+        df_filtered["Portfolio"],
+        categories=selected_portfolios,
         ordered=True
     )
 
@@ -411,13 +491,15 @@ with tab_stress:
     st.subheader("Stress Test PnL")
 
     fig_bar = go.Figure()
-    portfolios = df_filtered["Portfolio"].unique()
     palette = qualitative.Plotly
 
-    for i, portfolio in enumerate(portfolios):
+    for i, portfolio in enumerate(selected_portfolios):
         df_port = df_filtered[
             df_filtered["Portfolio"] == portfolio
         ]
+
+        if df_port.empty:
+            continue
 
         fig_bar.add_trace(
             go.Bar(
@@ -447,8 +529,8 @@ with tab_stress:
     st.header("Comparison Analysis")
 
     selected_portfolio = st.selectbox(
-        "Select portfolio",
-        portfolios,
+        "Select portfolio for comparison",
+        selected_portfolios,
         index=0
     )
 
@@ -459,6 +541,10 @@ with tab_stress:
     df_peers = df_filtered[
         df_filtered["Portfolio"] != selected_portfolio
     ][["ScenarioName", "StressPnL"]]
+
+    if df_peers.empty:
+        st.warning("Not enough portfolios selected for peer comparison.")
+        st.stop()
 
     df_peer_stats = (
         df_peers
