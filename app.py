@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.colors import qualitative
-from io import BytesIO
 
 # --------------------------------------------------
 # Page config
@@ -10,23 +9,22 @@ from io import BytesIO
 st.set_page_config(layout="wide")
 
 # --------------------------------------------------
-# Tabs
-# --------------------------------------------------
-tab_corr, tab_stress = st.tabs(["Correlation", "Stress Test"])
-
-# --------------------------------------------------
-# Sidebar controls (sempre presenti)
+# Sidebar (common)
 # --------------------------------------------------
 st.sidebar.title("Controls")
 
-# Chart selector sempre presente
 chart_type = st.sidebar.selectbox(
     "Select chart",
     ["EGQ vs Index and Cash", "E7X vs Funds"]
 )
 
 # --------------------------------------------------
-# Funzione per caricamento dati Correlation
+# Tabs
+# --------------------------------------------------
+tab_corr, tab_stress = st.tabs(["Correlation", "Stress Test"])
+
+# --------------------------------------------------
+# Load Correlation data
 # --------------------------------------------------
 @st.cache_data
 def load_corr_data(path):
@@ -35,576 +33,275 @@ def load_corr_data(path):
     df = df.set_index(df.columns[0]).sort_index()
     return df
 
-# Caricamento dati Correlation
 corrEGQ = load_corr_data("corrEGQ.xlsx")
 corrE7X = load_corr_data("corrE7X.xlsx")
 
 # --------------------------------------------------
-# Funzione per caricamento dati Stress Test
+# Load Stress Test data
 # --------------------------------------------------
 @st.cache_data
 def load_stress_data(path):
     xls = pd.ExcelFile(path)
     records = []
-    for sheet_name in xls.sheet_names:
-        if "_" in sheet_name:
-            portfolio, scenario_name = sheet_name.split("_", 1)
+
+    for sheet in xls.sheet_names:
+        if "_" in sheet:
+            portfolio, scenario = sheet.split("_", 1)
         else:
-            portfolio, scenario_name = sheet_name, sheet_name
-        df = pd.read_excel(xls, sheet_name=sheet_name)
+            portfolio, scenario = sheet, sheet
+
+        df = pd.read_excel(xls, sheet_name=sheet)
+
         df = df.rename(columns={
             df.columns[0]: "Date",
             df.columns[2]: "Scenario",
             df.columns[4]: "StressPnL"
         })
+
         df["Date"] = pd.to_datetime(df["Date"])
         df["Portfolio"] = portfolio
-        df["ScenarioName"] = scenario_name
-        records.append(df[["Date", "Scenario", "StressPnL", "Portfolio", "ScenarioName"]])
+        df["ScenarioName"] = scenario
+
+        records.append(
+            df[["Date", "Scenario", "StressPnL", "Portfolio", "ScenarioName"]]
+        )
+
     return pd.concat(records, ignore_index=True)
 
-stress_data = load_stress_data("stress_test_totE7X.xlsx")
-
 # ==================================================
-# TAB 1 — CORRELATION
+# TAB — CORRELATION
 # ==================================================
 with tab_corr:
-    st.session_state.current_tab = "Correlation"
+    st.title("Correlation Analysis")
 
-    # Selezione dataframe in base al chart_type
+    # Data selection
     if chart_type == "EGQ vs Index and Cash":
         df = corrEGQ.copy()
         chart_title = "EGQ vs Index and Cash"
-        reference_asset = "EGQ"
     else:
         df = corrE7X.copy()
         chart_title = "E7X vs Funds"
-        reference_asset = "E7X"
 
     # -----------------------------
-    # Date range picker solo qui
+    # Sidebar controls (Correlation)
     # -----------------------------
     st.sidebar.subheader("Date range (Correlation)")
+
     start_date, end_date = st.sidebar.date_input(
         "Select start and end date",
         value=(df.index.min().date(), df.index.max().date()),
         min_value=df.index.min().date(),
         max_value=df.index.max().date()
     )
+
     df = df.loc[pd.to_datetime(start_date):pd.to_datetime(end_date)]
 
-    # -----------------------------
-    # Series selector
-    # -----------------------------
     st.sidebar.subheader("Series")
+
     selected_series = st.sidebar.multiselect(
         "Select series",
         options=df.columns.tolist(),
         default=df.columns.tolist()
     )
+
     if not selected_series:
         st.warning("Please select at least one series.")
         st.stop()
 
     # -----------------------------
-    # Color map
+    # Plot
     # -----------------------------
     palette = qualitative.Plotly
     color_map = {s: palette[i % len(palette)] for i, s in enumerate(selected_series)}
 
-    # -----------------------------
-    # Title
-    # -----------------------------
-    st.title(chart_title)
+    st.subheader(chart_title)
 
-    # -----------------------------
-    # Time series plot
-    # -----------------------------
-    st.subheader("Correlation Time Series")
-    fig_ts = go.Figure()
-    for col in selected_series:
-        fig_ts.add_trace(
+    fig = go.Figure()
+
+    for s in selected_series:
+        fig.add_trace(
             go.Scatter(
                 x=df.index,
-                y=df[col] * 100,
+                y=df[s] * 100,
                 mode="lines",
-                name=col,
-                line=dict(color=color_map[col]),
+                name=s,
+                line=dict(color=color_map[s]),
                 hovertemplate="%{y:.2f}%<extra></extra>"
             )
         )
-    fig_ts.update_layout(
-        height=600,
-        hovermode="x unified",
+
+    fig.update_layout(
         template="plotly_white",
+        hovermode="x unified",
+        height=600,
         yaxis=dict(ticksuffix="%"),
         xaxis_title="Date",
         yaxis_title="Correlation"
     )
-    st.plotly_chart(fig_ts, use_container_width=True)
 
-    # -----------------------------
-    # Radar chart
-    # -----------------------------
-    st.subheader("Correlation Radar")
-    snapshot_date = df.index.max()
-    snapshot = df.loc[snapshot_date, selected_series]
-    mean_corr = df[selected_series].mean()
-
-    fig_radar = go.Figure()
-    fig_radar.add_trace(
-        go.Scatterpolar(
-            r=snapshot.values * 100,
-            theta=snapshot.index,
-            name=f"End date ({snapshot_date.date()})",
-            line=dict(width=3)
-        )
-    )
-    fig_radar.add_trace(
-        go.Scatterpolar(
-            r=mean_corr.values * 100,
-            theta=mean_corr.index,
-            name="Period mean",
-            line=dict(dash="dot")
-        )
-    )
-    fig_radar.update_layout(
-        polar=dict(radialaxis=dict(visible=True, range=[-100, 100], ticksuffix="%")),
-        template="plotly_white",
-        height=650
-    )
-    st.plotly_chart(fig_radar, use_container_width=True)
-
-    # -----------------------------
-    # Summary statistics
-    # -----------------------------
-    st.subheader("Summary statistics")
-    stats_df = pd.DataFrame(index=selected_series)
-    stats_df["Mean (%)"] = df[selected_series].mean() * 100
-    stats_df["Min (%)"] = df[selected_series].min() * 100
-    stats_df["Min Date"] = [df[col][df[col] == df[col].min()].index.max() for col in selected_series]
-    stats_df["Max (%)"] = df[selected_series].max() * 100
-    stats_df["Max Date"] = [df[col][df[col] == df[col].max()].index.max() for col in selected_series]
-    stats_df["Min Date"] = pd.to_datetime(stats_df["Min Date"]).dt.strftime("%d/%m/%Y")
-    stats_df["Max Date"] = pd.to_datetime(stats_df["Max Date"]).dt.strftime("%d/%m/%Y")
-    st.dataframe(stats_df.style.format({"Mean (%)": "{:.2f}%", "Min (%)": "{:.2f}%", "Max (%)": "{:.2f}%"}), use_container_width=True)
-
-# ==================================================
-# TAB 2 — STRESS TEST
-# ==================================================
-# --------------------------------------------------
-# Funzione per caricamento dati Stress Test
-# --------------------------------------------------
-@st.cache_data
-def load_stress_data(path):
-    xls = pd.ExcelFile(path)
-    records = []
-
-    for sheet_name in xls.sheet_names:
-        if "_" in sheet_name:
-            portfolio, scenario_name = sheet_name.split("_", 1)
-        else:
-            portfolio, scenario_name = sheet_name, sheet_name
-
-        df = pd.read_excel(xls, sheet_name=sheet_name)
-
-        df = df.rename(columns={
-            df.columns[0]: "Date",
-            df.columns[2]: "Scenario",
-            df.columns[4]: "StressPnL"
-        })
-
-        df["Date"] = pd.to_datetime(df["Date"])
-        df["Portfolio"] = portfolio
-        df["ScenarioName"] = scenario_name
-
-        records.append(
-            df[["Date", "Scenario", "StressPnL", "Portfolio", "ScenarioName"]]
-        )
-
-    return pd.concat(records, ignore_index=True)
-
-
-# --------------------------------------------------
-# Selezione file Stress Test in base al chart_type
-# --------------------------------------------------
-if chart_type == "EGQ vs Index and Cash":
-    stress_path = "stress_test_totEGQ.xlsx"
-    stress_title = "Stress Test Analysis – EGQ"
-else:
-    stress_path = "stress_test_totE7X.xlsx"
-    stress_title = "Stress Test Analysis – E7X"
-
-stress_data = load_stress_data(stress_path)
-
-
-# ==================================================
-# TAB — STRESS TEST
-# ==================================================
-# --------------------------------------------------
-# Funzione per caricamento dati Stress Test
-# --------------------------------------------------
-@st.cache_data
-def load_stress_data(path):
-    xls = pd.ExcelFile(path)
-    records = []
-
-    for sheet_name in xls.sheet_names:
-        if "_" in sheet_name:
-            portfolio, scenario_name = sheet_name.split("_", 1)
-        else:
-            portfolio, scenario_name = sheet_name, sheet_name
-
-        df = pd.read_excel(xls, sheet_name=sheet_name)
-
-        df = df.rename(columns={
-            df.columns[0]: "Date",
-            df.columns[2]: "Scenario",
-            df.columns[4]: "StressPnL"
-        })
-
-        df["Date"] = pd.to_datetime(df["Date"])
-        df["Portfolio"] = portfolio
-        df["ScenarioName"] = scenario_name
-
-        records.append(
-            df[["Date", "Scenario", "StressPnL", "Portfolio", "ScenarioName"]]
-        )
-
-    return pd.concat(records, ignore_index=True)
-
-
-# --------------------------------------------------
-# Selezione file Stress Test in base al chart_type
-# --------------------------------------------------
-if chart_type == "EGQ vs Index and Cash":
-    stress_path = "stress_test_totEGQ.xlsx"
-    stress_title = "Stress Test Analysis – EGQ"
-else:
-    stress_path = "stress_test_totE7X.xlsx"
-    stress_title = "Stress Test Analysis – E7X"
-
-stress_data = load_stress_data(stress_path)
-
-
-# ==================================================
-# STRESS TEST — DATA LOADING
-# ==================================================
-@st.cache_data
-def load_stress_data(path):
-    xls = pd.ExcelFile(path)
-    records = []
-
-    for sheet_name in xls.sheet_names:
-        if "_" in sheet_name:
-            portfolio, scenario_name = sheet_name.split("_", 1)
-        else:
-            portfolio, scenario_name = sheet_name, sheet_name
-
-        df = pd.read_excel(xls, sheet_name=sheet_name)
-
-        df = df.rename(columns={
-            df.columns[0]: "Date",
-            df.columns[2]: "Scenario",
-            df.columns[4]: "StressPnL"
-        })
-
-        df["Date"] = pd.to_datetime(df["Date"])
-        df["Portfolio"] = portfolio
-        df["ScenarioName"] = scenario_name
-
-        records.append(
-            df[["Date", "Scenario", "StressPnL", "Portfolio", "ScenarioName"]]
-        )
-
-    return pd.concat(records, ignore_index=True)
-
-
-# --------------------------------------------------
-# Select Stress Test file based on chart_type
-# --------------------------------------------------
-if chart_type == "EGQ vs Index and Cash":
-    stress_path = "stress_test_totEGQ.xlsx"
-    stress_title = "Stress Test Analysis – EGQ"
-else:
-    stress_path = "stress_test_totE7X.xlsx"
-    stress_title = "Stress Test Analysis – E7X"
-
-stress_data = load_stress_data(stress_path)
-
-
-# ==================================================
-# STRESS TEST — DATA LOADING
-# ==================================================
-@st.cache_data
-def load_stress_data(path):
-    xls = pd.ExcelFile(path)
-    records = []
-
-    for sheet_name in xls.sheet_names:
-        if "_" in sheet_name:
-            portfolio, scenario_name = sheet_name.split("_", 1)
-        else:
-            portfolio, scenario_name = sheet_name, sheet_name
-
-        df = pd.read_excel(xls, sheet_name=sheet_name)
-
-        df = df.rename(columns={
-            df.columns[0]: "Date",
-            df.columns[2]: "Scenario",
-            df.columns[4]: "StressPnL"
-        })
-
-        df["Date"] = pd.to_datetime(df["Date"])
-        df["Portfolio"] = portfolio
-        df["ScenarioName"] = scenario_name
-
-        records.append(
-            df[["Date", "Scenario", "StressPnL", "Portfolio", "ScenarioName"]]
-        )
-
-    return pd.concat(records, ignore_index=True)
-
-
-# --------------------------------------------------
-# Select Stress Test file based on chart_type
-# --------------------------------------------------
-if chart_type == "EGQ vs Index and Cash":
-    stress_path = "stress_test_totEGQ.xlsx"
-    stress_title = "Stress Test Analysis – EGQ"
-else:
-    stress_path = "stress_test_totE7X.xlsx"
-    stress_title = "Stress Test Analysis – E7X"
-
-stress_data = load_stress_data(stress_path)
-
+    st.plotly_chart(fig, use_container_width=True)
 
 # ==================================================
 # TAB — STRESS TEST
 # ==================================================
 with tab_stress:
-    st.session_state.current_tab = "StressTest"
+    # File selection
+    if chart_type == "EGQ vs Index and Cash":
+        stress_path = "stress_test_totEGQ.xlsx"
+        stress_title = "Stress Test Analysis – EGQ"
+    else:
+        stress_path = "stress_test_totE7X.xlsx"
+        stress_title = "Stress Test Analysis – E7X"
+
+    stress_data = load_stress_data(stress_path)
+
     st.title(stress_title)
 
     # -----------------------------
-    # Date selector
+    # Sidebar controls (Stress Test)
     # -----------------------------
     st.sidebar.subheader("Date (Stress Test)")
 
-    all_dates = (
-        stress_data["Date"]
-        .dropna()
-        .sort_values()
-        .unique()
-    )
-
-    date_options = [d.strftime("%Y/%m/%d") for d in all_dates]
-
-    selected_date_str = st.sidebar.selectbox(
+    all_dates = sorted(stress_data["Date"].dropna().unique())
+    date_str = st.sidebar.selectbox(
         "Select date",
-        date_options
+        [d.strftime("%Y-%m-%d") for d in all_dates]
     )
 
-    selected_date = pd.to_datetime(
-        selected_date_str,
-        format="%Y/%m/%d"
-    )
+    selected_date = pd.to_datetime(date_str)
 
     df_filtered = stress_data[
         stress_data["Date"] == selected_date
     ]
 
-    if df_filtered.empty:
-        st.warning("No data available for the selected date.")
-        st.stop()
-
-    # -----------------------------
-    # Portfolio selector
-    # -----------------------------
     st.sidebar.subheader("Portfolios")
 
-    available_portfolios = (
-        df_filtered["Portfolio"]
-        .dropna()
-        .sort_values()
-        .unique()
-        .tolist()
-    )
-
+    portfolios = sorted(df_filtered["Portfolio"].unique())
     selected_portfolios = st.sidebar.multiselect(
         "Select portfolios",
-        options=available_portfolios,
-        default=available_portfolios
+        portfolios,
+        default=portfolios
     )
 
-    if not selected_portfolios:
-        st.warning("Please select at least one portfolio.")
-        st.stop()
-
-    df_filtered = df_filtered[
-        df_filtered["Portfolio"].isin(selected_portfolios)
-    ]
-
-    # -----------------------------
-    # Scenario selector
-    # -----------------------------
     st.sidebar.subheader("Scenarios")
 
-    available_scenarios = (
-        df_filtered["ScenarioName"]
-        .dropna()
-        .sort_values()
-        .unique()
-        .tolist()
-    )
-
+    scenarios = sorted(df_filtered["ScenarioName"].unique())
     selected_scenarios = st.sidebar.multiselect(
-        "Select stress scenarios",
-        options=available_scenarios,
-        default=available_scenarios
+        "Select scenarios",
+        scenarios,
+        default=scenarios
     )
-
-    if not selected_scenarios:
-        st.warning("Please select at least one stress scenario.")
-        st.stop()
 
     df_filtered = df_filtered[
-        df_filtered["ScenarioName"].isin(selected_scenarios)
+        (df_filtered["Portfolio"].isin(selected_portfolios)) &
+        (df_filtered["ScenarioName"].isin(selected_scenarios))
     ]
 
-    # Preserve user order
-    df_filtered["ScenarioName"] = pd.Categorical(
-        df_filtered["ScenarioName"],
-        categories=selected_scenarios,
-        ordered=True
-    )
-
-    df_filtered["Portfolio"] = pd.Categorical(
-        df_filtered["Portfolio"],
-        categories=selected_portfolios,
-        ordered=True
-    )
+    if df_filtered.empty:
+        st.warning("No data available for current selection.")
+        st.stop()
 
     # -----------------------------
-    # Stress Test PnL – Grouped bar
+    # Stress PnL bar chart
     # -----------------------------
     st.subheader("Stress Test PnL")
 
-    fig_bar = go.Figure()
+    fig = go.Figure()
     palette = qualitative.Plotly
 
-    for i, portfolio in enumerate(selected_portfolios):
-        df_port = df_filtered[
-            df_filtered["Portfolio"] == portfolio
-        ]
-
-        if df_port.empty:
+    for i, p in enumerate(selected_portfolios):
+        df_p = df_filtered[df_filtered["Portfolio"] == p]
+        if df_p.empty:
             continue
 
-        fig_bar.add_trace(
+        fig.add_trace(
             go.Bar(
-                x=df_port["ScenarioName"],
-                y=df_port["StressPnL"],
-                name=portfolio,
-                marker_color=palette[i % len(palette)],
-                text=df_port["StressPnL"],
-                textposition="auto"
+                x=df_p["ScenarioName"],
+                y=df_p["StressPnL"],
+                name=p,
+                marker_color=palette[i % len(palette)]
             )
         )
 
-    fig_bar.update_layout(
+    fig.update_layout(
         barmode="group",
-        xaxis_title="Scenario",
-        yaxis_title="Stress PnL (bps)",
         template="plotly_white",
-        height=600
+        height=600,
+        xaxis_title="Scenario",
+        yaxis_title="Stress PnL (bps)"
     )
 
-    st.plotly_chart(fig_bar, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True)
 
     # -----------------------------
-    # Portfolio vs Peer Analysis
+    # Portfolio vs Peers
     # -----------------------------
     st.markdown("---")
-    st.header("Comparison Analysis")
+    st.subheader("Portfolio vs Peers")
 
     selected_portfolio = st.selectbox(
-        "Select portfolio for comparison",
-        selected_portfolios,
-        index=0
+        "Select portfolio",
+        selected_portfolios
     )
 
-    df_analysis = df_filtered[
-        df_filtered["Portfolio"] == selected_portfolio
-    ][["ScenarioName", "StressPnL"]]
-
-    df_peers = df_filtered[
-        df_filtered["Portfolio"] != selected_portfolio
-    ][["ScenarioName", "StressPnL"]]
+    df_self = df_filtered[df_filtered["Portfolio"] == selected_portfolio]
+    df_peers = df_filtered[df_filtered["Portfolio"] != selected_portfolio]
 
     if df_peers.empty:
-        st.warning("Not enough portfolios selected for peer comparison.")
+        st.warning("Select at least two portfolios for comparison.")
         st.stop()
 
-    df_peer_stats = (
+    stats = (
         df_peers
-        .groupby("ScenarioName", as_index=False)
+        .groupby("ScenarioName")
         .agg(
-            peer_median=("StressPnL", "median"),
+            median=("StressPnL", "median"),
             q25=("StressPnL", lambda x: x.quantile(0.25)),
             q75=("StressPnL", lambda x: x.quantile(0.75))
         )
+        .reset_index()
     )
 
-    df_plot = df_analysis.merge(
-        df_peer_stats,
-        on="ScenarioName",
-        how="inner"
-    )
+    df_plot = df_self.merge(stats, on="ScenarioName")
 
     fig = go.Figure()
 
-    # Q25–Q75 range
     for _, r in df_plot.iterrows():
         fig.add_trace(
             go.Scatter(
-                x=[r["q25"], r["q75"]],
-                y=[r["ScenarioName"], r["ScenarioName"]],
+                x=[r.q25, r.q75],
+                y=[r.ScenarioName, r.ScenarioName],
                 mode="lines",
                 line=dict(width=14, color="rgba(255,0,0,0.25)"),
-                showlegend=False,
-                hoverinfo="skip"
+                showlegend=False
             )
         )
 
-    # Peer median
     fig.add_trace(
         go.Scatter(
-            x=df_plot["peer_median"],
+            x=df_plot["median"],
             y=df_plot["ScenarioName"],
             mode="markers",
-            marker=dict(size=9, color="red"),
-            name="Peer median"
+            name="Peer median",
+            marker=dict(color="red", size=8)
         )
     )
 
-    # Selected portfolio
     fig.add_trace(
         go.Scatter(
             x=df_plot["StressPnL"],
             y=df_plot["ScenarioName"],
             mode="markers",
-            marker=dict(size=14, symbol="star", color="orange"),
-            name=selected_portfolio
+            name=selected_portfolio,
+            marker=dict(symbol="star", size=14, color="orange")
         )
     )
 
     fig.update_layout(
-        xaxis_title="Stress PnL (bps)",
-        yaxis_title="Scenario",
         template="plotly_white",
         height=600,
-        hovermode="y"
+        xaxis_title="Stress PnL (bps)",
+        yaxis_title="Scenario"
     )
 
     st.plotly_chart(fig, use_container_width=True)
