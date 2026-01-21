@@ -246,14 +246,28 @@ with tab_stress:
     st.title(stress_title)
 
     # --------------------------------------------------
-    # 🔗 FILTRO PORTAFOGLI = Select Series (Correlation)
+    # Costruzione portafogli Stress Test
+    # --------------------------------------------------
+    selected_series_corr = st.session_state.get("selected_series", [])
+    
+    if chart_type == "EGQ vs Index and Cash":
+        reference_portfolio = "EGQ"
+    else:
+        reference_portfolio = "E7X"
+    
+    stress_portfolios = list(
+        set(selected_series_corr + [reference_portfolio])
+    )
+    
+    # --------------------------------------------------
+    # Filtro Stress Test
     # --------------------------------------------------
     stress_data = stress_data[
-        stress_data["Portfolio"].isin(selected_series)
+        stress_data["Portfolio"].isin(stress_portfolios)
     ]
-
+    
     if stress_data.empty:
-        st.warning("No Stress Test data for selected series.")
+        st.warning("No Stress Test data for selected series + reference portfolio.")
         st.stop()
 
     # -----------------------------
