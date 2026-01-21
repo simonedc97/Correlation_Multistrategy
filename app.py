@@ -620,7 +620,7 @@ with tab_stress:
                 y=[r["ScenarioName"], r["ScenarioName"]],
                 mode="lines",
                 line=dict(width=14, color="rgba(255,0,0,0.25)"),
-                name="25–75% Bucket range" if _ == 0 else None,  # Solo una volta in legenda
+                name="25–75 Quantile Bucket range" #if _ == 0 else None,  # Solo una volta in legenda
                 hoverinfo="skip"
             )
         )
