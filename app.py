@@ -526,7 +526,7 @@ with tab_stress:
     # Portfolio vs Peer Analysis
     # -----------------------------
     st.markdown("---")
-    st.header("Comparison Analysis")
+    st.subheader("Comparison Analysis")
 
     selected_portfolio = st.selectbox(
         "Select portfolio for comparison",
