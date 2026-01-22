@@ -1,48 +1,23 @@
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
-from plotly.colors import qualitative
+import matplotlib.pyplot as plt
 from io import BytesIO
 
-# --------------------------------------------------
-# Page config
-# --------------------------------------------------
-st.set_page_config(layout="wide")
+st.set_page_config(page_title="Stress Test", layout="wide")
 
-# --------------------------------------------------
-# Tabs
-# --------------------------------------------------
-tab_corr, tab_stress = st.tabs(["Correlation", "Stress Test"])
+# ======================================================
+# CONFIG
+# ======================================================
 
-# --------------------------------------------------
-# Sidebar controls (sempre presenti)
-# --------------------------------------------------
-st.sidebar.title("Controls")
+STRESS_LIST_PATH = "StressUtilizzati.xlsx"
+STRESS_DATA_PATH = "StressData.xlsx"
 
-chart_type = st.sidebar.selectbox(
-    "Select chart",
-    ["EGQ vs Index and Cash", "E7X vs Funds"]
-)
+# ======================================================
+# LOAD STRESS LIST (ORDINATA PER LUNGHEZZA ↓)
+# ======================================================
 
-# --------------------------------------------------
-# Correlation data loader
-# --------------------------------------------------
 @st.cache_data
-def load_corr_data(path):
-    df = pd.read_excel(path, sheet_name="Correlation Clean")
-    df.iloc[:, 0] = pd.to_datetime(df.iloc[:, 0])
-    df = df.set_index(df.columns[0]).sort_index()
-    return df
-
-
-corrEGQ = load_corr_data("corrEGQ.xlsx")
-corrE7X = load_corr_data("corrE7X.xlsx")
-
-# --------------------------------------------------
-# Stress name utilities
-# --------------------------------------------------
-@st.cache_data
-def load_stress_list(path="StressUtilizzati.xlsx"):
+def load_stress_list(path):
     df = pd.read_excel(path, usecols=[0])
     return (
         df.iloc[:, 0]
@@ -53,6 +28,9 @@ def load_stress_list(path="StressUtilizzati.xlsx"):
         .tolist()
     )
 
+# ======================================================
+# PARSING SHEET NAME (FIX DEFINITIVO)
+# ======================================================
 
 def split_sheet_name(sheet_name, stress_list):
     for stress in stress_list:
@@ -61,19 +39,23 @@ def split_sheet_name(sheet_name, stress_list):
             portfolio = sheet_name[:-len(suffix)]
             return portfolio, stress
 
-    st.warning(f"⚠️ Stress non riconosciuto nel foglio: {sheet_name}")
+    st.warning(f"⚠️ Stress non riconosciuto: {sheet_name}")
     return sheet_name, "UNKNOWN"
 
+# ======================================================
+# LOAD STRESS DATA (UNICA VERSIONE)
+# ======================================================
 
 @st.cache_data
 def load_stress_data(path, stress_list):
     xls = pd.ExcelFile(path)
-    records = []
+    out = []
 
-    for sheet_name in xls.sheet_names:
-        portfolio, scenario_name = split_sheet_name(sheet_name, stress_list)
+    for sheet in xls.sheet_names:
+        portfolio, stress = split_sheet_name(sheet, stress_list)
 
-        df = pd.read_excel(xls, sheet_name=sheet_name)
+        df = pd.read_excel(xls, sheet_name=sheet)
+
         df = df.rename(columns={
             df.columns[0]: "Date",
             df.columns[2]: "Scenario",
@@ -82,193 +64,118 @@ def load_stress_data(path, stress_list):
 
         df["Date"] = pd.to_datetime(df["Date"])
         df["Portfolio"] = portfolio
-        df["ScenarioName"] = scenario_name
+        df["Stress"] = stress
 
-        records.append(
-            df[["Date", "Scenario", "StressPnL", "Portfolio", "ScenarioName"]]
+        out.append(
+            df[["Date", "Scenario", "StressPnL", "Portfolio", "Stress"]]
         )
 
-    return pd.concat(records, ignore_index=True)
+    return pd.concat(out, ignore_index=True)
 
+# ======================================================
+# DOWNLOAD UTILITY
+# ======================================================
 
-stress_list = load_stress_list()
-
-# --------------------------------------------------
-# TAB 1 — CORRELATION
-# --------------------------------------------------
-with tab_corr:
-    st.session_state.current_tab = "Correlation"
-
-    if chart_type == "EGQ vs Index and Cash":
-        df = corrEGQ.copy()
-        chart_title = "EGQ vs Index and Cash"
-    else:
-        df = corrE7X.copy()
-        chart_title = "E7X vs Funds"
-
-    st.sidebar.subheader("Date range (Correlation)")
-    start_date, end_date = st.sidebar.date_input(
-        "Select start and end date",
-        value=(df.index.min().date(), df.index.max().date()),
-        min_value=df.index.min().date(),
-        max_value=df.index.max().date()
-    )
-
-    df = df.loc[pd.to_datetime(start_date):pd.to_datetime(end_date)]
-
-    st.sidebar.subheader("Series (Correlation)")
-    selected_series = st.sidebar.multiselect(
-        "Select series",
-        options=df.columns.tolist(),
-        default=df.columns.tolist()
-    )
-
-    if not selected_series:
-        st.stop()
-
-    palette = qualitative.Plotly
-    color_map = {s: palette[i % len(palette)] for i, s in enumerate(selected_series)}
-
-    st.title(chart_title)
-    st.subheader("Correlation Time Series")
-
-    fig_ts = go.Figure()
-    for col in selected_series:
-        fig_ts.add_trace(
-            go.Scatter(
-                x=df.index,
-                y=df[col] * 100,
-                name=col,
-                mode="lines",
-                line=dict(color=color_map[col]),
-                hovertemplate="%{y:.2f}%<extra></extra>"
-            )
-        )
-
-    fig_ts.update_layout(
-        height=600,
-        hovermode="x unified",
-        template="plotly_white",
-        yaxis=dict(ticksuffix="%")
-    )
-
-    st.plotly_chart(fig_ts, use_container_width=True)
-
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        (df[selected_series] * 100).to_excel(writer)
-
+def download_excel(df, name):
+    buffer = BytesIO()
+    with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+        df.to_excel(writer, index=False)
     st.download_button(
-        "📥 Download time series data as Excel",
-        output.getvalue(),
-        "time_series_data.xlsx"
+        label="📥 Download Excel",
+        data=buffer.getvalue(),
+        file_name=name,
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-    st.subheader("Correlation Radar")
+# ======================================================
+# APP
+# ======================================================
 
-    snapshot = df[selected_series].iloc[-1]
-    mean_corr = df[selected_series].mean()
+st.title("Stress Test Analysis")
 
-    fig_radar = go.Figure()
-    fig_radar.add_trace(go.Scatterpolar(
-        r=snapshot.values * 100,
-        theta=snapshot.index,
-        name="End date"
-    ))
-    fig_radar.add_trace(go.Scatterpolar(
-        r=mean_corr.values * 100,
-        theta=mean_corr.index,
-        name="Period mean",
-        line=dict(dash="dot")
-    ))
+stress_list = load_stress_list(STRESS_LIST_PATH)
+stress_data = load_stress_data(STRESS_DATA_PATH, stress_list)
 
-    fig_radar.update_layout(
-        polar=dict(radialaxis=dict(range=[-100, 100], ticksuffix="%")),
-        height=650
+# ======================================================
+# SIDEBAR
+# ======================================================
+
+st.sidebar.header("Filtri")
+
+portfolio_sel = st.sidebar.multiselect(
+    "Portfolio",
+    sorted(stress_data["Portfolio"].unique()),
+    default=sorted(stress_data["Portfolio"].unique())
+)
+
+stress_sel = st.sidebar.multiselect(
+    "Stress",
+    sorted(stress_data["Stress"].unique()),
+    default=sorted(stress_data["Stress"].unique())
+)
+
+df = stress_data[
+    stress_data["Portfolio"].isin(portfolio_sel) &
+    stress_data["Stress"].isin(stress_sel)
+]
+
+# ======================================================
+# NOTE
+# ======================================================
+
+st.markdown("""
+### 📝 Note
+- Gli stress vengono riconosciuti **solo** tramite `StressUtilizzati.xlsx`
+- Il parsing usa **sempre lo stress più lungo**
+- Duplicazioni tipo `E7X / E7X_USDN_REL` **non sono possibili**
+""")
+
+# ======================================================
+# CONTROLLO PARSING (DEBUG VISIVO)
+# ======================================================
+
+with st.expander("🔍 Controllo parsing sheet"):
+    st.dataframe(
+        df[["Portfolio", "Stress"]]
+        .drop_duplicates()
+        .sort_values(["Portfolio", "Stress"])
     )
 
-    st.plotly_chart(fig_radar, use_container_width=True)
+# ======================================================
+# AGGREGAZIONE
+# ======================================================
 
-    st.subheader("Summary statistics")
+agg = (
+    df.groupby(["Portfolio", "Stress"], as_index=False)["StressPnL"]
+    .sum()
+)
 
-    stats_df = pd.DataFrame(index=selected_series)
-    stats_df["Mean (%)"] = df[selected_series].mean() * 100
-    stats_df["Min (%)"] = df[selected_series].min() * 100
-    stats_df["Max (%)"] = df[selected_series].max() * 100
+# ======================================================
+# GRAFICO
+# ======================================================
 
-    st.dataframe(stats_df.style.format("{:.2f}%"), use_container_width=True)
+st.subheader("Stress PnL per Portfolio")
 
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        stats_df.to_excel(writer)
+fig, ax = plt.subplots(figsize=(12, 6))
 
-    st.download_button(
-        "📥 Download summary statistics as Excel",
-        output.getvalue(),
-        "summary_statistics.xlsx"
+for stress in agg["Stress"].unique():
+    subset = agg[agg["Stress"] == stress]
+    ax.bar(
+        subset["Portfolio"],
+        subset["StressPnL"],
+        label=stress
     )
 
-# --------------------------------------------------
-# TAB 2 — STRESS TEST
-# --------------------------------------------------
-if chart_type == "EGQ vs Index and Cash":
-    stress_path = "stress_test_totEGQ.xlsx"
-    stress_title = "EGQ vs Index and Cash"
-else:
-    stress_path = "stress_test_totE7X.xlsx"
-    stress_title = "E7X vs Funds"
+ax.set_ylabel("Stress PnL")
+ax.legend()
+ax.grid(axis="y")
 
-stress_data = load_stress_data(stress_path, stress_list)
+st.pyplot(fig)
 
-with tab_stress:
-    st.session_state.current_tab = "StressTest"
-    st.title(stress_title)
+# ======================================================
+# DOWNLOAD
+# ======================================================
 
-    st.sidebar.subheader("Date (Stress Test)")
-    dates = sorted(stress_data["Date"].unique())
-    selected_date = st.sidebar.selectbox("Select date", dates)
-
-    df_filtered = stress_data[stress_data["Date"] == selected_date]
-
-    st.sidebar.subheader("Series (Stress Test)")
-    portfolios = df_filtered["Portfolio"].unique().tolist()
-    selected_portfolios = st.sidebar.multiselect(
-        "Select series",
-        portfolios,
-        default=portfolios
-    )
-
-    df_filtered = df_filtered[df_filtered["Portfolio"].isin(selected_portfolios)]
-
-    st.sidebar.subheader("Scenarios (Stress Test)")
-    scenarios = df_filtered["ScenarioName"].unique().tolist()
-    selected_scenarios = st.sidebar.multiselect(
-        "Select stress scenarios",
-        scenarios,
-        default=scenarios
-    )
-
-    df_filtered = df_filtered[df_filtered["ScenarioName"].isin(selected_scenarios)]
-
-    st.subheader("Stress Test PnL")
-
-    fig_bar = go.Figure()
-    for i, p in enumerate(selected_portfolios):
-        tmp = df_filtered[df_filtered["Portfolio"] == p]
-        fig_bar.add_trace(go.Bar(
-            x=tmp["ScenarioName"],
-            y=tmp["StressPnL"],
-            name=p
-        ))
-
-    fig_bar.update_layout(barmode="group", height=600)
-    st.plotly_chart(fig_bar, use_container_width=True)
-
-    st.markdown(
-        """
-        <div style="display:flex;align-items:center;">
-        <sub>Note: shaded areas represent the 25–75 percentile dispersion of the Bucket.</sub>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+st.subheader("Download dati")
+download_excel(df, "stress_data_filtered.xlsx")
+download_excel(agg, "stress_pnl_aggregated.xlsx")
