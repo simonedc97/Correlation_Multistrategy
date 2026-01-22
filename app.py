@@ -673,6 +673,7 @@ with tab_stress:
     # -----------------------------
     # Bottone di download Excel dei dati del grafico
     # -----------------------------
+    from io import BytesIO
     
     # Dati da scaricare
     df_download = df_plot.rename(columns={
