@@ -48,7 +48,7 @@ def load_stress_data(path):
     records = []
     for sheet_name in xls.sheet_names:
         if "_" in sheet_name:
-            portfolio, scenario_name = sheet_name.split("_", 1)
+            portfolio, scenario_name = sheet_name.split("&&", 1)
         else:
             portfolio, scenario_name = sheet_name, sheet_name
         df = pd.read_excel(xls, sheet_name=sheet_name)
