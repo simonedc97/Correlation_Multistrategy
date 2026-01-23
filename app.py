@@ -603,3 +603,129 @@ with tab_legenda:
         use_container_width=True,
         hide_index=True
     )
+
+# --------------------------------------------------
+# Funzione per caricamento dati Exposure
+# --------------------------------------------------
+@st.cache_data
+def load_exposure_data(path):
+    df = pd.read_excel(path, sheet_name="Exposure")  # o il nome corretto del foglio
+    df = df.rename(columns={
+        df.columns[0]: "Date",  # colonna A
+        df.columns[3]: "Portfolio",  # colonna D
+        df.columns[4]: "Portfolio Equity Exposure",  # colonna E
+        df.columns[5]: "Portfolio Duration",  # colonna F
+        df.columns[6]: "Portfolio Spread Duration"  # colonna G
+    })
+    df["Date"] = pd.to_datetime(df["Date"])
+    return df
+
+exposure_data = load_exposure_data("E7X Exposure.xlsx")
+
+
+
+    # ==================================================
+    # TAB — EXPOSURE
+    # ==================================================
+    tab_exposure = st.tabs(["Exposure"])[0]
+    
+    with tab_exposure:
+        st.session_state.current_tab = "Exposure"
+        st.title("E7X Exposure")
+    
+        # -----------------------------
+        # Date selector
+        # -----------------------------
+        st.sidebar.subheader("Date (Exposure)")
+    
+        all_dates = (
+            exposure_data["Date"]
+            .dropna()
+            .sort_values()
+            .unique()
+        )
+        date_options = [d.strftime("%Y/%m/%d") for d in all_dates]
+    
+        selected_date_str = st.sidebar.selectbox(
+            "Select date",
+            date_options
+        )
+        selected_date = pd.to_datetime(selected_date_str, format="%Y/%m/%d")
+    
+        df_filtered = exposure_data[exposure_data["Date"] == selected_date]
+    
+        if df_filtered.empty:
+            st.warning("No data available for the selected date.")
+            st.stop()
+    
+        # -----------------------------
+        # Portfolio selector
+        # -----------------------------
+        st.sidebar.subheader("Portfolios (Exposure)")
+    
+        available_portfolios = (
+            df_filtered["Portfolio"]
+            .dropna()
+            .sort_values()
+            .unique()
+            .tolist()
+        )
+    
+        selected_portfolios = st.sidebar.multiselect(
+            "Select portfolios",
+            options=available_portfolios,
+            default=available_portfolios
+        )
+    
+        if not selected_portfolios:
+            st.warning("Please select at least one portfolio.")
+            st.stop()
+    
+        df_filtered = df_filtered[df_filtered["Portfolio"].isin(selected_portfolios)]
+    
+        # -----------------------------
+        # Grafico Exposure
+        # -----------------------------
+        st.subheader("Portfolio Exposure Metrics")
+    
+        fig_exp = go.Figure()
+        palette = qualitative.Plotly
+    
+        metrics = ["Portfolio Equity Exposure", "Portfolio Duration", "Portfolio Spread Duration"]
+    
+        for i, portfolio in enumerate(selected_portfolios):
+            df_port = df_filtered[df_filtered["Portfolio"] == portfolio]
+            for metric in metrics:
+                fig_exp.add_trace(
+                    go.Bar(
+                        x=df_port["Date"],
+                        y=df_port[metric],
+                        name=f"{portfolio} - {metric}",
+                        marker_color=palette[i % len(palette)],
+                    )
+                )
+    
+        fig_exp.update_layout(
+            barmode="group",
+            xaxis_title="Date",
+            yaxis_title="Exposure",
+            template="plotly_white",
+            height=600
+        )
+    
+        st.plotly_chart(fig_exp, use_container_width=True)
+    
+        # -----------------------------
+        # Download Excel
+        # -----------------------------
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            df_filtered.to_excel(writer, sheet_name="Exposure Data", index=False)
+    
+        st.download_button(
+            label="📥 Download Exposure data as Excel",
+            data=output.getvalue(),
+            file_name="exposure_data.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key="download_exposure"
+        )
