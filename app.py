@@ -683,7 +683,6 @@ with tab_legenda:
             value_name="Value"
         )
     
-        # Grafico
         fig_exp = go.Figure()
         palette = qualitative.Plotly
     
@@ -695,7 +694,7 @@ with tab_legenda:
                     y=df_port["Value"],   
                     name=portfolio,
                     marker_color=palette[i % len(palette)],
-                    text=df_port["Value"].round(1),  # massimo 1 decimale
+                    text=df_port["Value"].round(1),
                     textposition="auto",
                     texttemplate="%{text:.1f}"
                 )
@@ -712,16 +711,99 @@ with tab_legenda:
         st.plotly_chart(fig_exp, use_container_width=True)
     
         # -----------------------------
-        # Download Excel
+        # Comparison Analysis Exposure
         # -----------------------------
+        st.markdown("---")
+        st.subheader("Comparison Analysis (Exposure)")
+    
+        selected_portfolio = st.selectbox(
+            "Analysis portfolio",
+            selected_portfolios,
+            index=0
+        )
+    
+        df_analysis = df_filtered[df_filtered["Portfolio"] == selected_portfolio][["Portfolio"] + metrics]
+    
+        df_bucket = df_filtered[df_filtered["Portfolio"] != selected_portfolio][["Portfolio"] + metrics]
+    
+        if df_bucket.empty:
+            st.warning("Not enough portfolios selected for bucket comparison.")
+            st.stop()
+    
+        # Calcolo mediana e quantili del Bucket per ciascuna metrica
+        df_bucket_stats = df_bucket[metrics].agg(["median", lambda x: x.quantile(0.25), lambda x: x.quantile(0.75)]).T
+        df_bucket_stats.columns = ["bucket_median", "q25", "q75"]
+    
+        # Merge dei dati per il plot
+        df_plot_comp = df_analysis.melt(id_vars=["Portfolio"], value_vars=metrics, var_name="Metric", value_name="Value")
+        df_plot_comp = df_plot_comp.merge(df_bucket_stats.reset_index().rename(columns={"index":"Metric"}), on="Metric", how="left")
+    
+        # Plot Comparison
+        fig_comp = go.Figure()
+    
+        # Q25–Q75 range (barra ombreggiata)
+        for _, r in df_plot_comp.iterrows():
+            fig_comp.add_trace(
+                go.Scatter(
+                    x=[r["q25"], r["q75"]],
+                    y=[r["Metric"], r["Metric"]],
+                    mode="lines",
+                    line=dict(width=14, color="rgba(0,0,255,0.25)"),
+                    showlegend=False,
+                    hoverinfo="skip"
+                )
+            )
+    
+        # Bucket median
+        fig_comp.add_trace(
+            go.Scatter(
+                x=df_plot_comp["bucket_median"],
+                y=df_plot_comp["Metric"],
+                mode="markers",
+                marker=dict(size=9, color="blue"),
+                name="Bucket median"
+            )
+        )
+    
+        # Selected portfolio
+        fig_comp.add_trace(
+            go.Scatter(
+                x=df_plot_comp["Value"],
+                y=df_plot_comp["Metric"],
+                mode="markers",
+                marker=dict(size=14, symbol="star", color="orange"),
+                name=selected_portfolio
+            )
+        )
+    
+        fig_comp.update_layout(
+            xaxis_title="Exposure Value",
+            yaxis_title="Metric",
+            template="plotly_white",
+            height=600,
+            hovermode="y"
+        )
+    
+        st.plotly_chart(fig_comp, use_container_width=True)
+    
+        # -----------------------------
+        # Download Excel dei dati Comparison
+        # -----------------------------
+        df_download_comp = df_plot_comp.rename(columns={
+            "bucket_median": "Bucket Portfolio Median",
+            "q25": "25% Quantile",
+            "q75": "75% Quantile",
+            "Value": selected_portfolio
+        })
+    
         output = BytesIO()
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
-            df_filtered.to_excel(writer, sheet_name="Exposure Data", index=False)
+            df_download_comp.to_excel(writer, sheet_name="Exposure Comparison", index=False)
     
         st.download_button(
-            label="📥 Download Exposure data as Excel",
+            label=f"📥 Download {selected_portfolio} vs Bucket Exposure data as Excel",
             data=output.getvalue(),
-            file_name="exposure_data.xlsx",
+            file_name=f"{selected_portfolio}_vs_bucket_exposure.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            key="download_exposure"
+            key=f"download_{selected_portfolio}_vs_bucket_exposure"
         )
