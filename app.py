@@ -613,9 +613,9 @@ with tab_legenda:
         df = df.rename(columns={
             df.columns[0]: "Date",  # colonna A
             df.columns[3]: "Portfolio",  # colonna D
-            df.columns[4]: "Portfolio Equity Exposure",  # colonna E
-            df.columns[5]: "Portfolio Duration",  # colonna F
-            df.columns[6]: "Portfolio Spread Duration"  # colonna G
+            df.columns[4]: "Equity Exposure",  # colonna E
+            df.columns[5]: "Duration",  # colonna F
+            df.columns[6]: "Spread Duration"  # colonna G
         })
         df["Date"] = pd.to_datetime(df["Date"])
         return df
@@ -627,7 +627,7 @@ with tab_legenda:
     # ==================================================    
     with tab_exposure:
         st.session_state.current_tab = "Exposure"
-        st.title("E7X Dynamic Asset Allocation")
+        st.title("E7X Dynamic Asset Allocation vs Funds")
     
         # -----------------------------
         # Date selector
@@ -683,8 +683,8 @@ with tab_legenda:
             df_port = df_plot[df_plot["Portfolio"] == portfolio]
             fig_exp.add_trace(
                 go.Bar(
-                    x=df_port["Metric"],
-                    y=df_port["Value"],
+                    x=df_port[""],
+                    y=df_port["Exposure"],
                     name=portfolio,  # legenda solo con il portafoglio
                     marker_color=palette[i % len(palette)],
                     text=df_port["Value"],
