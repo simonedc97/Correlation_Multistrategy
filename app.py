@@ -635,15 +635,14 @@ with tab_legenda:
         st.sidebar.subheader("Date (Exposure)")
         all_dates = exposure_data["Date"].dropna().sort_values().unique()
         date_options = [d.strftime("%Y/%m/%d") for d in all_dates]
-    
-        selected_date_str = st.sidebar.selectbox("Select date", date_options)
+        
+        # Seleziona di default l'ultima data disponibile
+        selected_date_str = st.sidebar.selectbox(
+            "Select date",
+            date_options,
+            index=len(date_options) - 1  # <-- qui scegliamo l'ultimo elemento
+        )
         selected_date = pd.to_datetime(selected_date_str, format="%Y/%m/%d")
-    
-        df_filtered = exposure_data[exposure_data["Date"] == selected_date]
-    
-        if df_filtered.empty:
-            st.warning("No data available for the selected date.")
-            st.stop()
     
         # -----------------------------
         # Portfolio selector
