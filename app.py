@@ -623,10 +623,10 @@ with tab_legenda:
         return df
     
     exposure_data = load_exposure_data("E7X_Exposure.xlsx")
-    
+
     # ==================================================
     # TAB — EXPOSURE
-    # ==================================================    
+    # ==================================================
     with tab_exposure:
         st.session_state.current_tab = "Exposure"
     
@@ -636,7 +636,10 @@ with tab_legenda:
         else:
             st.title("EGQ vs Index and Cash")  # titolo per il subset non analizzato
     
-        if chart_type == "E7X vs Funds":
+        # Se chart_type è EGQ vs Index, mostra solo info box
+        if chart_type != "E7X vs Funds":
+            st.info("Analysis not performed for this subset.")
+        else:
             # -----------------------------
             # Date selector
             # -----------------------------
@@ -674,45 +677,24 @@ with tab_legenda:
                 st.stop()
     
             df_filtered = df_filtered[df_filtered["Portfolio"].isin(selected_portfolios)]
-        
-            if df_filtered.empty:
-                st.warning("No data available for the selected date.")
-                st.stop()
-        
-            # -----------------------------
-            # Portfolio selector
-            # -----------------------------
-            st.sidebar.subheader("Portfolios (Exposure)")
-            available_portfolios = df_filtered["Portfolio"].dropna().sort_values().unique().tolist()
-            selected_portfolios = st.sidebar.multiselect(
-                "Select portfolios",
-                options=available_portfolios,
-                default=available_portfolios
-            )
-        
-            if not selected_portfolios:
-                st.warning("Please select at least one portfolio.")
-                st.stop()
-        
-            df_filtered = df_filtered[df_filtered["Portfolio"].isin(selected_portfolios)]
-        
+    
             # -----------------------------
             # Grafico Exposure stile Stress Test
             # -----------------------------
             st.subheader("Exposure")
             metrics = ["Equity Exposure", "Duration", "Spread Duration"]
-        
-            # Creiamo un dataframe “long format” per Plotly
+    
+            # DataFrame “long format” per Plotly
             df_plot = df_filtered.melt(
                 id_vars=["Portfolio"], 
                 value_vars=metrics,
                 var_name="Metric",
                 value_name="Value"
             )
-        
+    
             fig_exp = go.Figure()
             palette = qualitative.Plotly
-        
+    
             for i, portfolio in enumerate(selected_portfolios):
                 df_port = df_plot[df_plot["Portfolio"] == portfolio]
                 fig_exp.add_trace(
@@ -726,7 +708,7 @@ with tab_legenda:
                         texttemplate="%{text:.1f}"
                     )
                 )
-        
+    
             fig_exp.update_layout(
                 barmode="group",
                 xaxis_title="Metric",
@@ -734,40 +716,39 @@ with tab_legenda:
                 template="plotly_white",
                 height=600
             )
-        
+    
             st.plotly_chart(fig_exp, use_container_width=True)
-        
+    
             # -----------------------------
             # Comparison Analysis Exposure
             # -----------------------------
             st.markdown("---")
             st.subheader("Comparison Analysis")
-        
+    
             selected_portfolio = st.selectbox(
                 "Analysis portfolio",
                 selected_portfolios,
                 index=0
             )
-        
+    
             df_analysis = df_filtered[df_filtered["Portfolio"] == selected_portfolio][["Portfolio"] + metrics]
-        
             df_bucket = df_filtered[df_filtered["Portfolio"] != selected_portfolio][["Portfolio"] + metrics]
-        
+    
             if df_bucket.empty:
                 st.warning("Not enough portfolios selected for bucket comparison.")
                 st.stop()
-        
+    
             # Calcolo mediana e quantili del Bucket per ciascuna metrica
             df_bucket_stats = df_bucket[metrics].agg(["median", lambda x: x.quantile(0.25), lambda x: x.quantile(0.75)]).T
             df_bucket_stats.columns = ["bucket_median", "q25", "q75"]
-        
+    
             # Merge dei dati per il plot
             df_plot_comp = df_analysis.melt(id_vars=["Portfolio"], value_vars=metrics, var_name="Metric", value_name="Value")
             df_plot_comp = df_plot_comp.merge(df_bucket_stats.reset_index().rename(columns={"index":"Metric"}), on="Metric", how="left")
-        
+    
             # Plot Comparison
             fig_comp = go.Figure()
-        
+    
             # Q25–Q75 range (barra ombreggiata)
             for _, r in df_plot_comp.iterrows():
                 fig_comp.add_trace(
@@ -780,7 +761,7 @@ with tab_legenda:
                         hoverinfo="skip"
                     )
                 )
-        
+    
             # Bucket median
             fig_comp.add_trace(
                 go.Scatter(
@@ -791,7 +772,7 @@ with tab_legenda:
                     name="Bucket median"
                 )
             )
-        
+    
             # Selected portfolio
             fig_comp.add_trace(
                 go.Scatter(
@@ -802,7 +783,7 @@ with tab_legenda:
                     name=selected_portfolio
                 )
             )
-        
+    
             fig_comp.update_layout(
                 xaxis_title="Exposure Value",
                 yaxis_title="Metric",
@@ -810,18 +791,18 @@ with tab_legenda:
                 height=600,
                 hovermode="y"
             )
-        
+    
             st.plotly_chart(fig_comp, use_container_width=True)
             st.markdown(
-            """
-            <div style="display: flex; align-items: center;">
-                <sub style="margin-right: 4px;">Note: the shaded areas</sub>
-                <div style="width: 20px; height: 14px; background-color: rgba(0,0,255,0.25); margin: 0 4px 0 0; border: 1px solid rgba(0,0,0,0.1);"></div>
-                <sub>represent the dispersion between the 25th and 75th percentile of the Bucket.</sub>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+                """
+                <div style="display: flex; align-items: center;">
+                    <sub style="margin-right: 4px;">Note: the shaded areas</sub>
+                    <div style="width: 20px; height: 14px; background-color: rgba(0,0,255,0.25); margin: 0 4px 0 0; border: 1px solid rgba(0,0,0,0.1);"></div>
+                    <sub>represent the dispersion between the 25th and 75th percentile of the Bucket.</sub>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
     
             # -----------------------------
             # Download Excel dei dati Comparison
@@ -832,11 +813,11 @@ with tab_legenda:
                 "q75": "75% Quantile",
                 "Value": selected_portfolio
             })
-        
+    
             output = BytesIO()
             with pd.ExcelWriter(output, engine="openpyxl") as writer:
                 df_download_comp.to_excel(writer, sheet_name="Exposure Comparison", index=False)
-        
+    
             st.download_button(
                 label=f"📥 Download {selected_portfolio} vs Bucket Exposure data as Excel",
                 data=output.getvalue(),
@@ -844,5 +825,19 @@ with tab_legenda:
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 key=f"download_{selected_portfolio}_vs_bucket_exposure"
             )
-        else:
-            st.info("Analysis not performed for this subset.")
+    
+            # -----------------------------
+            # Download Excel dati Exposure
+            # -----------------------------
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                df_filtered.to_excel(writer, sheet_name="Exposure Data", index=False)
+    
+            st.download_button(
+                label="📥 Download Exposure data as Excel",
+                data=output.getvalue(),
+                file_name="exposure_data.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="download_exposure"
+            )
+    
