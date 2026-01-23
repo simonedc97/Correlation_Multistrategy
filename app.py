@@ -543,7 +543,7 @@ with tab_legenda:
     # Legenda principale (dipende dal chart_type)
     # -----------------------------
     if chart_type == "EGQ vs Index and Cash":
-        sheet_main = "EQG"
+        sheet_main = "EGQ"
         legenda_title = "EGQ vs Index and Cash – Legend"
     else:
         sheet_main = "E7X"
