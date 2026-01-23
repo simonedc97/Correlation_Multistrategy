@@ -604,25 +604,23 @@ with tab_legenda:
         hide_index=True
     )
 
-# --------------------------------------------------
-# Funzione per caricamento dati Exposure
-# --------------------------------------------------
-@st.cache_data
-def load_exposure_data(path):
-    df = pd.read_excel(path, sheet_name="Exposure")  # o il nome corretto del foglio
-    df = df.rename(columns={
-        df.columns[0]: "Date",  # colonna A
-        df.columns[3]: "Portfolio",  # colonna D
-        df.columns[4]: "Portfolio Equity Exposure",  # colonna E
-        df.columns[5]: "Portfolio Duration",  # colonna F
-        df.columns[6]: "Portfolio Spread Duration"  # colonna G
-    })
-    df["Date"] = pd.to_datetime(df["Date"])
-    return df
-
-exposure_data = load_exposure_data("E7X Exposure.xlsx")
-
-
+    # --------------------------------------------------
+    # Funzione per caricamento dati Exposure
+    # --------------------------------------------------
+    @st.cache_data
+    def load_exposure_data(path):
+        df = pd.read_excel(path, sheet_name="Exposure")  # o il nome corretto del foglio
+        df = df.rename(columns={
+            df.columns[0]: "Date",  # colonna A
+            df.columns[3]: "Portfolio",  # colonna D
+            df.columns[4]: "Portfolio Equity Exposure",  # colonna E
+            df.columns[5]: "Portfolio Duration",  # colonna F
+            df.columns[6]: "Portfolio Spread Duration"  # colonna G
+        })
+        df["Date"] = pd.to_datetime(df["Date"])
+        return df
+    
+    exposure_data = load_exposure_data("E7X Exposure.xlsx")
 
     # ==================================================
     # TAB — EXPOSURE
