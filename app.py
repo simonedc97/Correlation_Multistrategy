@@ -620,7 +620,7 @@ with tab_legenda:
         df["Date"] = pd.to_datetime(df["Date"])
         return df
     
-    exposure_data = load_exposure_data("E7X Exposure.xlsx")
+    exposure_data = load_exposure_data("E7X_Exposure.xlsx")
 
     # ==================================================
     # TAB — EXPOSURE
@@ -629,7 +629,7 @@ with tab_legenda:
     
     with tab_exposure:
         st.session_state.current_tab = "Exposure"
-        st.title("E7X_Exposure")
+        st.title("E7X Dynamic Asset Allocation")
     
         # -----------------------------
         # Date selector
