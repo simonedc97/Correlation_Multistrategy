@@ -714,7 +714,7 @@ with tab_legenda:
         # Comparison Analysis Exposure
         # -----------------------------
         st.markdown("---")
-        st.subheader("Comparison Analysis (Exposure)")
+        st.subheader("Comparison Analysis")
     
         selected_portfolio = st.selectbox(
             "Analysis portfolio",
@@ -785,7 +785,17 @@ with tab_legenda:
         )
     
         st.plotly_chart(fig_comp, use_container_width=True)
-    
+            st.markdown(
+        """
+        <div style="display: flex; align-items: center;">
+            <sub style="margin-right: 4px;">Note: the shaded areas</sub>
+            <div style="width: 20px; height: 14px; background-color: rgba(0,0,255,0.25); margin: 0 4px 0 0; border: 1px solid rgba(0,0,0,0.1);"></div>
+            <sub>represent the dispersion between the 25th and 75th percentile of the Bucket.</sub>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
         # -----------------------------
         # Download Excel dei dati Comparison
         # -----------------------------
