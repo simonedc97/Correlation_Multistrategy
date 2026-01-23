@@ -241,7 +241,6 @@ with tab_corr:
         use_container_width=True
     )
 
-    from io import BytesIO
     
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
@@ -536,7 +535,6 @@ with tab_stress:
     # -----------------------------
     # Bottone di download Excel dei dati del grafico
     # -----------------------------
-    from io import BytesIO
     
     # Dati da scaricare
     df_download = df_plot.rename(columns={
