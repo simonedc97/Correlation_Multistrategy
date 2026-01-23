@@ -198,21 +198,21 @@ with tab_corr:
     )
     st.plotly_chart(fig_radar, use_container_width=True)
 
-# -----------------------------
-# Prendi la legenda principale nel tab Correlation
-# -----------------------------
-if chart_type == "EGQ vs Index and Cash":
-    sheet_main = "EGQ"
-else:
-    sheet_main = "E7X"
-
-legenda_main = load_legenda_sheet(
-    sheet_name=sheet_main,
-    usecols="A:C"
-)
-
-# Creiamo un mapping ticker → name
-ticker_to_name = dict(zip(legenda_main["Ticker"], legenda_main["Name"]))
+    # -----------------------------
+    # Prendi la legenda principale nel tab Correlation
+    # -----------------------------
+    if chart_type == "EGQ vs Index and Cash":
+        sheet_main = "EGQ"
+    else:
+        sheet_main = "E7X"
+    
+    legenda_main = load_legenda_sheet(
+        sheet_name=sheet_main,
+        usecols="A:C"
+    )
+    
+    # Creiamo un mapping ticker → name
+    ticker_to_name = dict(zip(legenda_main["Ticker"], legenda_main["Name"]))
 
     # -----------------------------
     # Summary statistics
