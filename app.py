@@ -69,7 +69,7 @@ stress_data = load_stress_data("stress_test_totE7X.xlsx")
 # Funzione per caricamento Legenda
 # --------------------------------------------------
 @st.cache_data
-def load_legenda():
+def load_legenda_sheet():
     return pd.read_excel(
         "Legenda.xlsx"
         #usecols="A:B"
