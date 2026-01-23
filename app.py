@@ -202,15 +202,39 @@ with tab_corr:
     # Summary statistics
     # -----------------------------
     st.subheader("Summary statistics")
+    
+    # Prendi la legenda principale
+    legenda_main = load_legenda_sheet(
+        sheet_name=sheet_main,
+        usecols="A:C"
+    )
+    
+    # Creiamo un mapping ticker → name
+    ticker_to_name = dict(zip(legenda_main["Ticker"], legenda_main["Name"]))
+    
+    # DataFrame delle statistiche
     stats_df = pd.DataFrame(index=selected_series)
+    
+    # Inseriamo la colonna Name dalla legenda
+    stats_df.insert(0, "Name", [ticker_to_name.get(t, "") for t in selected_series])
+    
+    # Calcolo delle statistiche
     stats_df["Mean (%)"] = df[selected_series].mean() * 100
     stats_df["Min (%)"] = df[selected_series].min() * 100
     stats_df["Min Date"] = [df[col][df[col] == df[col].min()].index.max() for col in selected_series]
     stats_df["Max (%)"] = df[selected_series].max() * 100
     stats_df["Max Date"] = [df[col][df[col] == df[col].max()].index.max() for col in selected_series]
+    
+    # Formattazione date
     stats_df["Min Date"] = pd.to_datetime(stats_df["Min Date"]).dt.strftime("%d/%m/%Y")
     stats_df["Max Date"] = pd.to_datetime(stats_df["Max Date"]).dt.strftime("%d/%m/%Y")
-    st.dataframe(stats_df.style.format({"Mean (%)": "{:.2f}%", "Min (%)": "{:.2f}%", "Max (%)": "{:.2f}%"}), use_container_width=True)
+    
+    # Visualizzazione
+    st.dataframe(
+        stats_df.style.format({"Mean (%)": "{:.2f}%", "Min (%)": "{:.2f}%", "Max (%)": "{:.2f}%"}),
+        use_container_width=True
+    )
+    
 
     # -----------------------------
     # Bottone di download Excel
