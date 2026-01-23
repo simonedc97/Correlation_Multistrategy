@@ -104,7 +104,7 @@ with tab_corr:
     # Selezione dataframe in base al chart_type
     if chart_type == "EGQ vs Index and Cash":
         df = corrEGQ.copy()
-        chart_title = "EGQ vs Index and Cash"
+        chart_title = "EGQ Flexible Multistrategy vs Index and Cash"
         reference_asset = "EGQ"
     else:
         df = corrE7X.copy()
@@ -282,7 +282,7 @@ with tab_corr:
 # --------------------------------------------------
 if chart_type == "EGQ vs Index and Cash":
     stress_path = "stress_test_totEGQ.xlsx"
-    stress_title = "EGQ vs Index and Cash"
+    stress_title = "EGQ Flexible Multistrategy vs Index and Cash"
 else:
     stress_path = "stress_test_totE7X.xlsx"
     stress_title = "E7X vs Funds"
@@ -587,7 +587,7 @@ with tab_stress:
         if chart_type == "E7X vs Funds":
             st.title("E7X Dynamic Asset Allocation vs Funds")
         else:
-            st.title("EGQ vs Index and Cash")  # titolo per il subset non analizzato
+            st.title("EGQ Flexible Multistrategy vs Index and Cash")  # titolo per il subset non analizzato
     
         # Se chart_type è EGQ vs Index, mostra solo info box
         if chart_type != "E7X vs Funds":
@@ -799,7 +799,7 @@ with tab_stress:
 with tab_legenda:
     st.session_state.current_tab = "Legenda"
     if chart_type == "EGQ vs Index and Cash":
-        st.title("EGQ vs Index and Cash")
+        st.title("EGQ Flexible Multistrategy vs Index and Cash")
     else:
         st.title("E7X vs Funds")
     # -----------------------------
