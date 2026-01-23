@@ -12,7 +12,7 @@ st.set_page_config(layout="wide")
 # --------------------------------------------------
 # Tabs
 # --------------------------------------------------
-tab_corr, tab_stress = st.tabs(["Correlation", "Stress Test"])
+tab_corr, tab_stress = st.tabs(["Correlation", "Stress Test", "Legenda"])
 
 # --------------------------------------------------
 # Sidebar controls (sempre presenti)
@@ -65,6 +65,15 @@ def load_stress_data(path):
 
 stress_data = load_stress_data("stress_test_totE7X.xlsx")
 
+# --------------------------------------------------
+# Funzione per caricamento Legenda
+# --------------------------------------------------
+@st.cache_data
+def load_legenda():
+    return pd.read_excel(
+        "StressUtilizzati.xlsx",
+        usecols="A:B"
+    )
 # ==================================================
 # TAB 1 — CORRELATION
 # ==================================================
@@ -693,5 +702,20 @@ with tab_stress:
         file_name=f"{selected_portfolio}_vs_bucket.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         key=f"download_{selected_portfolio}_vs_bucket"
+    )
+
+# ==================================================
+# TAB — LEGENDA
+# ==================================================
+with tab_legenda:
+    st.session_state.current_tab = "Legenda"
+    st.title("Legenda scenari di stress")
+
+    legenda_df = load_legenda()
+
+    st.dataframe(
+        legenda_df,
+        use_container_width=True,
+        hide_index=True
     )
 
