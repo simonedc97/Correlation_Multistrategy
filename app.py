@@ -12,7 +12,7 @@ st.set_page_config(layout="wide")
 # --------------------------------------------------
 # Tabs
 # --------------------------------------------------
-tab_corr, tab_stress, tab_legenda = st.tabs(["Correlation", "Stress Test", "Legend"])
+tab_corr, tab_stress, tab_legenda, tab_exposure = st.tabs(["Correlation", "Stress Test", "Legend", "Exposure"])
 
 # --------------------------------------------------
 # Sidebar controls (sempre presenti)
