@@ -718,7 +718,21 @@ with tab_legenda:
             )
     
             st.plotly_chart(fig_exp, use_container_width=True)
+            # -----------------------------
+            # Download Excel dati Exposure
+            # -----------------------------
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                df_filtered.to_excel(writer, sheet_name="Exposure Data", index=False)
     
+            st.download_button(
+                label="📥 Download Exposure data as Excel",
+                data=output.getvalue(),
+                file_name="exposure_data.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="download_exposure"
+            )
+            
             # -----------------------------
             # Comparison Analysis Exposure
             # -----------------------------
@@ -826,18 +840,5 @@ with tab_legenda:
                 key=f"download_{selected_portfolio}_vs_bucket_exposure"
             )
     
-            # -----------------------------
-            # Download Excel dati Exposure
-            # -----------------------------
-            output = BytesIO()
-            with pd.ExcelWriter(output, engine="openpyxl") as writer:
-                df_filtered.to_excel(writer, sheet_name="Exposure Data", index=False)
-    
-            st.download_button(
-                label="📥 Download Exposure data as Excel",
-                data=output.getvalue(),
-                file_name="exposure_data.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key="download_exposure"
-            )
+
     
