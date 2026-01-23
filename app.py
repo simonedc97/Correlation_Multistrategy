@@ -539,9 +539,9 @@ with tab_legenda:
     st.session_state.current_tab = "Legenda"
     #st.title("Legenda Stress Test Scenarios")
     if chart_type == "EGQ vs Index and Cash":
-        st.title = ("EGQ vs Index and Cash")
+        st.title("EGQ vs Index and Cash")
     else:
-        st.title = ("E7X vs Funds")
+        st.title("E7X vs Funds")
     # -----------------------------
     # Legenda principale (dipende dal chart_type)
     # -----------------------------
