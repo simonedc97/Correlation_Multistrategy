@@ -342,10 +342,15 @@ with tab_stress:
         .tolist()
     )
 
+    if chart_type == "EGQ Flexible Multistrategy vs Index and Cash":
+        default_portfolio_stress = ["EGQ"]
+    else:
+        default_portfolio_stress = ["E7X"]
+    
     selected_portfolios = st.sidebar.multiselect(
         "Select series",
         options=available_portfolios,
-        default=available_portfolios
+        default=[p for p in available_portfolios if p in default_portfolio_stress] or available_portfolios
     )
 
     if not selected_portfolios:
@@ -619,10 +624,11 @@ with tab_stress:
             # -----------------------------
             st.sidebar.subheader("Series (Exposure)")
             available_portfolios = df_filtered["Portfolio"].dropna().sort_values().unique().tolist()
+            default_portfolio_exposure = ["E7X"]  # sempre E7X per exposure
             selected_portfolios = st.sidebar.multiselect(
                 "Select portfolios",
                 options=available_portfolios,
-                default=available_portfolios
+                default=[p for p in available_portfolios if p in default_portfolio_exposure] or available_portfolios
             )
     
             if not selected_portfolios:
