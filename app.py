@@ -556,53 +556,6 @@ with tab_stress:
         key=f"download_{selected_portfolio}_vs_bucket"
     )
 
-# ==================================================
-# TAB — LEGENDA
-# ==================================================
-with tab_legenda:
-    st.session_state.current_tab = "Legenda"
-    if chart_type == "EGQ vs Index and Cash":
-        st.title("EGQ vs Index and Cash")
-    else:
-        st.title("E7X vs Funds")
-    # -----------------------------
-    # Legenda principale (dipende dal chart_type)
-    # -----------------------------
-    if chart_type == "EGQ vs Index and Cash":
-        sheet_main = "EGQ"
-        legenda_title = "Series"
-    else:
-        sheet_main = "E7X"
-        legenda_title = "Series"
-
-    legenda_main = load_legenda_sheet(
-        sheet_name=sheet_main,
-        usecols="A:C"
-    )
-
-    st.subheader(legenda_title)
-    st.dataframe(
-        legenda_main,
-        use_container_width=True,
-        hide_index=True
-    )
-
-    st.markdown("---")
-
-    # -----------------------------
-    # Scenari
-    # -----------------------------
-    legenda_scenari = load_legenda_sheet(
-        sheet_name="Scenari",
-        usecols="A:B"
-    )
-
-    st.subheader("Stress Test Scenarios")
-    st.dataframe(
-        legenda_scenari,
-        use_container_width=True,
-        hide_index=True
-    )
 
     # --------------------------------------------------
     # Funzione per caricamento dati Exposure
@@ -840,5 +793,52 @@ with tab_legenda:
                 key=f"download_{selected_portfolio}_vs_bucket_exposure"
             )
     
+# ==================================================
+# TAB — LEGENDA
+# ==================================================
+with tab_legenda:
+    st.session_state.current_tab = "Legenda"
+    if chart_type == "EGQ vs Index and Cash":
+        st.title("EGQ vs Index and Cash")
+    else:
+        st.title("E7X vs Funds")
+    # -----------------------------
+    # Legenda principale (dipende dal chart_type)
+    # -----------------------------
+    if chart_type == "EGQ vs Index and Cash":
+        sheet_main = "EGQ"
+        legenda_title = "Series"
+    else:
+        sheet_main = "E7X"
+        legenda_title = "Series"
+
+    legenda_main = load_legenda_sheet(
+        sheet_name=sheet_main,
+        usecols="A:C"
+    )
+
+    st.subheader(legenda_title)
+    st.dataframe(
+        legenda_main,
+        use_container_width=True,
+        hide_index=True
+    )
+
+    st.markdown("---")
+
+    # -----------------------------
+    # Scenari
+    # -----------------------------
+    legenda_scenari = load_legenda_sheet(
+        sheet_name="Scenari",
+        usecols="A:B"
+    )
+
+    st.subheader("Stress Test Scenarios")
+    st.dataframe(
+        legenda_scenari,
+        use_container_width=True,
+        hide_index=True
+    )
 
     
