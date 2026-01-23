@@ -624,9 +624,7 @@ with tab_legenda:
 
     # ==================================================
     # TAB — EXPOSURE
-    # ==================================================
-    tab_exposure = st.tabs(["Exposure"])[0]
-    
+    # ==================================================    
     with tab_exposure:
         st.session_state.current_tab = "Exposure"
         st.title("E7X Dynamic Asset Allocation")
