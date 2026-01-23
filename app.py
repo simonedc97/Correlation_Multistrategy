@@ -609,15 +609,17 @@ with tab_legenda:
     # --------------------------------------------------
     @st.cache_data
     def load_exposure_data(path):
-        df = pd.read_excel(path, sheet_name="MeasuresSeries")  # o il nome corretto del foglio
+        df = pd.read_excel(path, sheet_name="MeasuresSeries")
         df = df.rename(columns={
-            df.columns[0]: "Date",  # colonna A
-            df.columns[3]: "Portfolio",  # colonna D
-            df.columns[4]: "Equity Exposure",  # colonna E
-            df.columns[5]: "Duration",  # colonna F
-            df.columns[6]: "Spread Duration"  # colonna G
+            df.columns[0]: "Date",
+            df.columns[3]: "Portfolio",
+            df.columns[4]: "Equity Exposure",
+            df.columns[5]: "Duration",
+            df.columns[6]: "Spread Duration"
         })
         df["Date"] = pd.to_datetime(df["Date"])
+        # Rimuove eventuali spazi residui
+        df.columns = df.columns.str.strip()
         return df
     
     exposure_data = load_exposure_data("E7X_Exposure.xlsx")
