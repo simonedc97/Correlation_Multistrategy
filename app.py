@@ -785,7 +785,7 @@ with tab_legenda:
         )
     
         st.plotly_chart(fig_comp, use_container_width=True)
-            st.markdown(
+        st.markdown(
         """
         <div style="display: flex; align-items: center;">
             <sub style="margin-right: 4px;">Note: the shaded areas</sub>
