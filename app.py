@@ -672,10 +672,11 @@ with tab_legenda:
         df_plot = df_filtered.melt(
             id_vars=["Portfolio"], 
             value_vars=metrics,
-            var_name="",
+            var_name="Metric",   # <-- qui il nome corretto
             value_name="Value"
         )
-    
+        
+        # Grafico
         fig_exp = go.Figure()
         palette = qualitative.Plotly
         
@@ -683,9 +684,9 @@ with tab_legenda:
             df_port = df_plot[df_plot["Portfolio"] == portfolio]
             fig_exp.add_trace(
                 go.Bar(
-                    x=df_port["m"],
-                    y=df_port["Exposure"],
-                    name=portfolio,  # legenda solo con il portafoglio
+                    x=df_port["Metric"],  # <-- qui usiamo il nome corretto
+                    y=df_port["Value"],   # <-- qui usiamo "Value"
+                    name=portfolio,
                     marker_color=palette[i % len(palette)],
                     text=df_port["Value"],
                     textposition="auto",
@@ -700,8 +701,9 @@ with tab_legenda:
             template="plotly_white",
             height=600
         )
-    
+        
         st.plotly_chart(fig_exp, use_container_width=True)
+
     
         # -----------------------------
         # Download Excel
