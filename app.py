@@ -633,19 +633,10 @@ with tab_legenda:
         # Date selector
         # -----------------------------
         st.sidebar.subheader("Date (Exposure)")
-    
-        all_dates = (
-            exposure_data["Date"]
-            .dropna()
-            .sort_values()
-            .unique()
-        )
+        all_dates = exposure_data["Date"].dropna().sort_values().unique()
         date_options = [d.strftime("%Y/%m/%d") for d in all_dates]
     
-        selected_date_str = st.sidebar.selectbox(
-            "Select date",
-            date_options
-        )
+        selected_date_str = st.sidebar.selectbox("Select date", date_options)
         selected_date = pd.to_datetime(selected_date_str, format="%Y/%m/%d")
     
         df_filtered = exposure_data[exposure_data["Date"] == selected_date]
@@ -658,15 +649,7 @@ with tab_legenda:
         # Portfolio selector
         # -----------------------------
         st.sidebar.subheader("Portfolios (Exposure)")
-    
-        available_portfolios = (
-            df_filtered["Portfolio"]
-            .dropna()
-            .sort_values()
-            .unique()
-            .tolist()
-        )
-    
+        available_portfolios = df_filtered["Portfolio"].dropna().sort_values().unique().tolist()
         selected_portfolios = st.sidebar.multiselect(
             "Select portfolios",
             options=available_portfolios,
@@ -680,31 +663,39 @@ with tab_legenda:
         df_filtered = df_filtered[df_filtered["Portfolio"].isin(selected_portfolios)]
     
         # -----------------------------
-        # Grafico Exposure
+        # Grafico Exposure stile Stress Test
         # -----------------------------
         st.subheader("Portfolio Exposure Metrics")
+        metrics = ["Portfolio Equity Exposure", "Portfolio Duration", "Portfolio Spread Duration"]
+    
+        # Creiamo un dataframe “long format” per Plotly
+        df_plot = df_filtered.melt(
+            id_vars=["Portfolio"], 
+            value_vars=metrics,
+            var_name="Metric",
+            value_name="Value"
+        )
     
         fig_exp = go.Figure()
         palette = qualitative.Plotly
     
-        metrics = ["Portfolio Equity Exposure", "Portfolio Duration", "Portfolio Spread Duration"]
-    
         for i, portfolio in enumerate(selected_portfolios):
-            df_port = df_filtered[df_filtered["Portfolio"] == portfolio]
-            for metric in metrics:
-                fig_exp.add_trace(
-                    go.Bar(
-                        x=df_port["Date"],
-                        y=df_port[metric],
-                        name=f"{portfolio} - {metric}",
-                        marker_color=palette[i % len(palette)],
-                    )
+            df_port = df_plot[df_plot["Portfolio"] == portfolio]
+            fig_exp.add_trace(
+                go.Bar(
+                    x=df_port["Metric"],
+                    y=df_port["Value"],
+                    name=portfolio,  # legenda solo con il portafoglio
+                    marker_color=palette[i % len(palette)],
+                    text=df_port["Value"],
+                    textposition="auto"
                 )
+            )
     
         fig_exp.update_layout(
             barmode="group",
-            xaxis_title="Date",
-            yaxis_title="Exposure",
+            xaxis_title="Metric",
+            yaxis_title="Value",
             template="plotly_white",
             height=600
         )
