@@ -629,191 +629,220 @@ with tab_legenda:
     # ==================================================    
     with tab_exposure:
         st.session_state.current_tab = "Exposure"
-        st.title("E7X Dynamic Asset Allocation vs Funds")
     
-        # -----------------------------
-        # Date selector
-        # -----------------------------
-        st.sidebar.subheader("Date (Exposure)")
-        all_dates = exposure_data["Date"].dropna().sort_values().unique()
-        date_options = [d.strftime("%Y/%m/%d") for d in all_dates]
+        # Titolo dinamico
+        if chart_type == "E7X vs Funds":
+            st.title("E7X Dynamic Asset Allocation vs Funds")
+        else:
+            st.title("EGQ vs Index and Cash")  # titolo per il subset non analizzato
     
-        # Seleziona di default l'ultima data disponibile
-        selected_date_str = st.sidebar.selectbox(
-            "Select date",
-            date_options,
-            index=len(date_options) - 1
-        )
-        selected_date = pd.to_datetime(selected_date_str, format="%Y/%m/%d")
+        if chart_type == "E7X vs Funds":
+            # -----------------------------
+            # Date selector
+            # -----------------------------
+            st.sidebar.subheader("Date (Exposure)")
+            all_dates = exposure_data["Date"].dropna().sort_values().unique()
+            date_options = [d.strftime("%Y/%m/%d") for d in all_dates]
     
-        df_filtered = exposure_data[exposure_data["Date"] == selected_date]
+            # Seleziona di default l'ultima data disponibile
+            selected_date_str = st.sidebar.selectbox(
+                "Select date",
+                date_options,
+                index=len(date_options) - 1
+            )
+            selected_date = pd.to_datetime(selected_date_str, format="%Y/%m/%d")
     
-        if df_filtered.empty:
-            st.warning("No data available for the selected date.")
-            st.stop()
+            df_filtered = exposure_data[exposure_data["Date"] == selected_date]
     
-        # -----------------------------
-        # Portfolio selector
-        # -----------------------------
-        st.sidebar.subheader("Portfolios (Exposure)")
-        available_portfolios = df_filtered["Portfolio"].dropna().sort_values().unique().tolist()
-        selected_portfolios = st.sidebar.multiselect(
-            "Select portfolios",
-            options=available_portfolios,
-            default=available_portfolios
-        )
+            if df_filtered.empty:
+                st.warning("No data available for the selected date.")
+                st.stop()
     
-        if not selected_portfolios:
-            st.warning("Please select at least one portfolio.")
-            st.stop()
-    
-        df_filtered = df_filtered[df_filtered["Portfolio"].isin(selected_portfolios)]
-    
-        # -----------------------------
-        # Grafico Exposure stile Stress Test
-        # -----------------------------
-        st.subheader("Exposure")
-        metrics = ["Equity Exposure", "Duration", "Spread Duration"]
-    
-        # Creiamo un dataframe “long format” per Plotly
-        df_plot = df_filtered.melt(
-            id_vars=["Portfolio"], 
-            value_vars=metrics,
-            var_name="Metric",
-            value_name="Value"
-        )
-    
-        fig_exp = go.Figure()
-        palette = qualitative.Plotly
-    
-        for i, portfolio in enumerate(selected_portfolios):
-            df_port = df_plot[df_plot["Portfolio"] == portfolio]
-            fig_exp.add_trace(
-                go.Bar(
-                    x=df_port["Metric"],  
-                    y=df_port["Value"],   
-                    name=portfolio,
-                    marker_color=palette[i % len(palette)],
-                    text=df_port["Value"].round(1),
-                    textposition="auto",
-                    texttemplate="%{text:.1f}"
-                )
+            # -----------------------------
+            # Portfolio selector
+            # -----------------------------
+            st.sidebar.subheader("Portfolios (Exposure)")
+            available_portfolios = df_filtered["Portfolio"].dropna().sort_values().unique().tolist()
+            selected_portfolios = st.sidebar.multiselect(
+                "Select portfolios",
+                options=available_portfolios,
+                default=available_portfolios
             )
     
-        fig_exp.update_layout(
-            barmode="group",
-            xaxis_title="Metric",
-            yaxis_title="Value",
-            template="plotly_white",
-            height=600
-        )
+            if not selected_portfolios:
+                st.warning("Please select at least one portfolio.")
+                st.stop()
     
-        st.plotly_chart(fig_exp, use_container_width=True)
-    
-        # -----------------------------
-        # Comparison Analysis Exposure
-        # -----------------------------
-        st.markdown("---")
-        st.subheader("Comparison Analysis")
-    
-        selected_portfolio = st.selectbox(
-            "Analysis portfolio",
-            selected_portfolios,
-            index=0
-        )
-    
-        df_analysis = df_filtered[df_filtered["Portfolio"] == selected_portfolio][["Portfolio"] + metrics]
-    
-        df_bucket = df_filtered[df_filtered["Portfolio"] != selected_portfolio][["Portfolio"] + metrics]
-    
-        if df_bucket.empty:
-            st.warning("Not enough portfolios selected for bucket comparison.")
-            st.stop()
-    
-        # Calcolo mediana e quantili del Bucket per ciascuna metrica
-        df_bucket_stats = df_bucket[metrics].agg(["median", lambda x: x.quantile(0.25), lambda x: x.quantile(0.75)]).T
-        df_bucket_stats.columns = ["bucket_median", "q25", "q75"]
-    
-        # Merge dei dati per il plot
-        df_plot_comp = df_analysis.melt(id_vars=["Portfolio"], value_vars=metrics, var_name="Metric", value_name="Value")
-        df_plot_comp = df_plot_comp.merge(df_bucket_stats.reset_index().rename(columns={"index":"Metric"}), on="Metric", how="left")
-    
-        # Plot Comparison
-        fig_comp = go.Figure()
-    
-        # Q25–Q75 range (barra ombreggiata)
-        for _, r in df_plot_comp.iterrows():
+            df_filtered = df_filtered[df_filtered["Portfolio"].isin(selected_portfolios)]
+        
+            if df_filtered.empty:
+                st.warning("No data available for the selected date.")
+                st.stop()
+        
+            # -----------------------------
+            # Portfolio selector
+            # -----------------------------
+            st.sidebar.subheader("Portfolios (Exposure)")
+            available_portfolios = df_filtered["Portfolio"].dropna().sort_values().unique().tolist()
+            selected_portfolios = st.sidebar.multiselect(
+                "Select portfolios",
+                options=available_portfolios,
+                default=available_portfolios
+            )
+        
+            if not selected_portfolios:
+                st.warning("Please select at least one portfolio.")
+                st.stop()
+        
+            df_filtered = df_filtered[df_filtered["Portfolio"].isin(selected_portfolios)]
+        
+            # -----------------------------
+            # Grafico Exposure stile Stress Test
+            # -----------------------------
+            st.subheader("Exposure")
+            metrics = ["Equity Exposure", "Duration", "Spread Duration"]
+        
+            # Creiamo un dataframe “long format” per Plotly
+            df_plot = df_filtered.melt(
+                id_vars=["Portfolio"], 
+                value_vars=metrics,
+                var_name="Metric",
+                value_name="Value"
+            )
+        
+            fig_exp = go.Figure()
+            palette = qualitative.Plotly
+        
+            for i, portfolio in enumerate(selected_portfolios):
+                df_port = df_plot[df_plot["Portfolio"] == portfolio]
+                fig_exp.add_trace(
+                    go.Bar(
+                        x=df_port["Metric"],  
+                        y=df_port["Value"],   
+                        name=portfolio,
+                        marker_color=palette[i % len(palette)],
+                        text=df_port["Value"].round(1),
+                        textposition="auto",
+                        texttemplate="%{text:.1f}"
+                    )
+                )
+        
+            fig_exp.update_layout(
+                barmode="group",
+                xaxis_title="Metric",
+                yaxis_title="Value",
+                template="plotly_white",
+                height=600
+            )
+        
+            st.plotly_chart(fig_exp, use_container_width=True)
+        
+            # -----------------------------
+            # Comparison Analysis Exposure
+            # -----------------------------
+            st.markdown("---")
+            st.subheader("Comparison Analysis")
+        
+            selected_portfolio = st.selectbox(
+                "Analysis portfolio",
+                selected_portfolios,
+                index=0
+            )
+        
+            df_analysis = df_filtered[df_filtered["Portfolio"] == selected_portfolio][["Portfolio"] + metrics]
+        
+            df_bucket = df_filtered[df_filtered["Portfolio"] != selected_portfolio][["Portfolio"] + metrics]
+        
+            if df_bucket.empty:
+                st.warning("Not enough portfolios selected for bucket comparison.")
+                st.stop()
+        
+            # Calcolo mediana e quantili del Bucket per ciascuna metrica
+            df_bucket_stats = df_bucket[metrics].agg(["median", lambda x: x.quantile(0.25), lambda x: x.quantile(0.75)]).T
+            df_bucket_stats.columns = ["bucket_median", "q25", "q75"]
+        
+            # Merge dei dati per il plot
+            df_plot_comp = df_analysis.melt(id_vars=["Portfolio"], value_vars=metrics, var_name="Metric", value_name="Value")
+            df_plot_comp = df_plot_comp.merge(df_bucket_stats.reset_index().rename(columns={"index":"Metric"}), on="Metric", how="left")
+        
+            # Plot Comparison
+            fig_comp = go.Figure()
+        
+            # Q25–Q75 range (barra ombreggiata)
+            for _, r in df_plot_comp.iterrows():
+                fig_comp.add_trace(
+                    go.Scatter(
+                        x=[r["q25"], r["q75"]],
+                        y=[r["Metric"], r["Metric"]],
+                        mode="lines",
+                        line=dict(width=14, color="rgba(0,0,255,0.25)"),
+                        showlegend=False,
+                        hoverinfo="skip"
+                    )
+                )
+        
+            # Bucket median
             fig_comp.add_trace(
                 go.Scatter(
-                    x=[r["q25"], r["q75"]],
-                    y=[r["Metric"], r["Metric"]],
-                    mode="lines",
-                    line=dict(width=14, color="rgba(0,0,255,0.25)"),
-                    showlegend=False,
-                    hoverinfo="skip"
+                    x=df_plot_comp["bucket_median"],
+                    y=df_plot_comp["Metric"],
+                    mode="markers",
+                    marker=dict(size=9, color="blue"),
+                    name="Bucket median"
                 )
             )
-    
-        # Bucket median
-        fig_comp.add_trace(
-            go.Scatter(
-                x=df_plot_comp["bucket_median"],
-                y=df_plot_comp["Metric"],
-                mode="markers",
-                marker=dict(size=9, color="blue"),
-                name="Bucket median"
+        
+            # Selected portfolio
+            fig_comp.add_trace(
+                go.Scatter(
+                    x=df_plot_comp["Value"],
+                    y=df_plot_comp["Metric"],
+                    mode="markers",
+                    marker=dict(size=14, symbol="star", color="orange"),
+                    name=selected_portfolio
+                )
             )
-        )
-    
-        # Selected portfolio
-        fig_comp.add_trace(
-            go.Scatter(
-                x=df_plot_comp["Value"],
-                y=df_plot_comp["Metric"],
-                mode="markers",
-                marker=dict(size=14, symbol="star", color="orange"),
-                name=selected_portfolio
+        
+            fig_comp.update_layout(
+                xaxis_title="Exposure Value",
+                yaxis_title="Metric",
+                template="plotly_white",
+                height=600,
+                hovermode="y"
             )
+        
+            st.plotly_chart(fig_comp, use_container_width=True)
+            st.markdown(
+            """
+            <div style="display: flex; align-items: center;">
+                <sub style="margin-right: 4px;">Note: the shaded areas</sub>
+                <div style="width: 20px; height: 14px; background-color: rgba(0,0,255,0.25); margin: 0 4px 0 0; border: 1px solid rgba(0,0,0,0.1);"></div>
+                <sub>represent the dispersion between the 25th and 75th percentile of the Bucket.</sub>
+            </div>
+            """,
+            unsafe_allow_html=True
         )
     
-        fig_comp.update_layout(
-            xaxis_title="Exposure Value",
-            yaxis_title="Metric",
-            template="plotly_white",
-            height=600,
-            hovermode="y"
-        )
-    
-        st.plotly_chart(fig_comp, use_container_width=True)
-        st.markdown(
-        """
-        <div style="display: flex; align-items: center;">
-            <sub style="margin-right: 4px;">Note: the shaded areas</sub>
-            <div style="width: 20px; height: 14px; background-color: rgba(0,0,255,0.25); margin: 0 4px 0 0; border: 1px solid rgba(0,0,0,0.1);"></div>
-            <sub>represent the dispersion between the 25th and 75th percentile of the Bucket.</sub>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-        # -----------------------------
-        # Download Excel dei dati Comparison
-        # -----------------------------
-        df_download_comp = df_plot_comp.rename(columns={
-            "bucket_median": "Bucket Portfolio Median",
-            "q25": "25% Quantile",
-            "q75": "75% Quantile",
-            "Value": selected_portfolio
-        })
-    
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine="openpyxl") as writer:
-            df_download_comp.to_excel(writer, sheet_name="Exposure Comparison", index=False)
-    
-        st.download_button(
-            label=f"📥 Download {selected_portfolio} vs Bucket Exposure data as Excel",
-            data=output.getvalue(),
-            file_name=f"{selected_portfolio}_vs_bucket_exposure.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            key=f"download_{selected_portfolio}_vs_bucket_exposure"
-        )
+            # -----------------------------
+            # Download Excel dei dati Comparison
+            # -----------------------------
+            df_download_comp = df_plot_comp.rename(columns={
+                "bucket_median": "Bucket Portfolio Median",
+                "q25": "25% Quantile",
+                "q75": "75% Quantile",
+                "Value": selected_portfolio
+            })
+        
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                df_download_comp.to_excel(writer, sheet_name="Exposure Comparison", index=False)
+        
+            st.download_button(
+                label=f"📥 Download {selected_portfolio} vs Bucket Exposure data as Excel",
+                data=output.getvalue(),
+                file_name=f"{selected_portfolio}_vs_bucket_exposure.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key=f"download_{selected_portfolio}_vs_bucket_exposure"
+            )
+        else:
+            st.info("Analysis not performed for this subset.")
