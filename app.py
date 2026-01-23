@@ -665,8 +665,8 @@ with tab_legenda:
         # -----------------------------
         # Grafico Exposure stile Stress Test
         # -----------------------------
-        st.subheader("Portfolio Exposure Metrics")
-        metrics = ["Portfolio Equity Exposure", "Portfolio Duration", "Portfolio Spread Duration"]
+        st.subheader("Exposure")
+        metrics = ["Equity Exposure", "Duration", "Spread Duration"]
     
         # Creiamo un dataframe “long format” per Plotly
         df_plot = df_filtered.melt(
