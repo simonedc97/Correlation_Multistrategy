@@ -709,7 +709,7 @@ with tab_stress:
 # ==================================================
 with tab_legenda:
     st.session_state.current_tab = "Legenda"
-    st.title("Legenda scenari di stress")
+    st.title("Legenda Stress Test Scenarios")
 
     legenda_df = load_legenda()
 
