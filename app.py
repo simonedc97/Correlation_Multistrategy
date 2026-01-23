@@ -609,7 +609,7 @@ with tab_legenda:
     # --------------------------------------------------
     @st.cache_data
     def load_exposure_data(path):
-        df = pd.read_excel(path, sheet_name="Exposure")  # o il nome corretto del foglio
+        df = pd.read_excel(path, sheet_name="MeasuresSeries")  # o il nome corretto del foglio
         df = df.rename(columns={
             df.columns[0]: "Date",  # colonna A
             df.columns[3]: "Portfolio",  # colonna D
@@ -629,7 +629,7 @@ with tab_legenda:
     
     with tab_exposure:
         st.session_state.current_tab = "Exposure"
-        st.title("E7X Exposure")
+        st.title("E7X_Exposure")
     
         # -----------------------------
         # Date selector
