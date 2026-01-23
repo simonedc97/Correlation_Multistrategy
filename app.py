@@ -538,10 +538,41 @@ with tab_legenda:
     st.session_state.current_tab = "Legenda"
     st.title("Legenda Stress Test Scenarios")
 
-    legenda_df = load_legenda()
+    # -----------------------------
+    # Legenda principale (dipende dal chart_type)
+    # -----------------------------
+    if chart_type == "EGQ vs Index and Cash":
+        sheet_main = "EQG"
+        legenda_title = "EGQ vs Index and Cash"
+    else:
+        sheet_main = "E7X"
+        legenda_title = "E7X vs Funds"
 
+    legenda_main = load_legenda_sheet(
+        sheet_name=sheet_main,
+        usecols="A:C"
+    )
+
+    st.subheader(legenda_title)
     st.dataframe(
-        legenda_df,
+        legenda_main,
+        use_container_width=True,
+        hide_index=True
+    )
+
+    st.markdown("---")
+
+    # -----------------------------
+    # Scenari
+    # -----------------------------
+    legenda_scenari = load_legenda_sheet(
+        sheet_name="Scenari",
+        usecols="A:B"
+    )
+
+    st.subheader("Stress Test Scenarios")
+    st.dataframe(
+        legenda_scenari,
         use_container_width=True,
         hide_index=True
     )
