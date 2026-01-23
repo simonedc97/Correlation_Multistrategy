@@ -678,7 +678,7 @@ with tab_legenda:
     
         fig_exp = go.Figure()
         palette = qualitative.Plotly
-    
+        
         for i, portfolio in enumerate(selected_portfolios):
             df_port = df_plot[df_plot["Portfolio"] == portfolio]
             fig_exp.add_trace(
@@ -688,10 +688,11 @@ with tab_legenda:
                     name=portfolio,  # legenda solo con il portafoglio
                     marker_color=palette[i % len(palette)],
                     text=df_port["Value"],
-                    textposition="auto"
+                    textposition="auto",
+                    texttemplate="%{y:.1f}"  # massimo 1 decimale
                 )
             )
-    
+        
         fig_exp.update_layout(
             barmode="group",
             xaxis_title="Metric",
