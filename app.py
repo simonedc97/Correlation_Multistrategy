@@ -623,7 +623,7 @@ with tab_legenda:
         return df
     
     exposure_data = load_exposure_data("E7X_Exposure.xlsx")
-
+    
     # ==================================================
     # TAB — EXPOSURE
     # ==================================================    
@@ -637,14 +637,20 @@ with tab_legenda:
         st.sidebar.subheader("Date (Exposure)")
         all_dates = exposure_data["Date"].dropna().sort_values().unique()
         date_options = [d.strftime("%Y/%m/%d") for d in all_dates]
-        
+    
         # Seleziona di default l'ultima data disponibile
         selected_date_str = st.sidebar.selectbox(
             "Select date",
             date_options,
-            index=len(date_options) - 1  # <-- qui scegliamo l'ultimo elemento
+            index=len(date_options) - 1
         )
         selected_date = pd.to_datetime(selected_date_str, format="%Y/%m/%d")
+    
+        df_filtered = exposure_data[exposure_data["Date"] == selected_date]
+    
+        if df_filtered.empty:
+            st.warning("No data available for the selected date.")
+            st.stop()
     
         # -----------------------------
         # Portfolio selector
@@ -673,28 +679,28 @@ with tab_legenda:
         df_plot = df_filtered.melt(
             id_vars=["Portfolio"], 
             value_vars=metrics,
-            var_name="Metric",   # <-- qui il nome corretto
+            var_name="Metric",
             value_name="Value"
         )
-        
+    
         # Grafico
         fig_exp = go.Figure()
         palette = qualitative.Plotly
-        
+    
         for i, portfolio in enumerate(selected_portfolios):
             df_port = df_plot[df_plot["Portfolio"] == portfolio]
             fig_exp.add_trace(
                 go.Bar(
-                    x=df_port["Metric"],  # <-- qui usiamo il nome corretto
-                    y=df_port["Value"],   # <-- qui usiamo "Value"
+                    x=df_port["Metric"],  
+                    y=df_port["Value"],   
                     name=portfolio,
                     marker_color=palette[i % len(palette)],
-                    text=df_port["Value"],
+                    text=df_port["Value"].round(1),  # massimo 1 decimale
                     textposition="auto",
-                    texttemplate="%{y:.1f}"  # massimo 1 decimale
+                    texttemplate="%{text:.1f}"
                 )
             )
-        
+    
         fig_exp.update_layout(
             barmode="group",
             xaxis_title="Metric",
@@ -702,9 +708,8 @@ with tab_legenda:
             template="plotly_white",
             height=600
         )
-        
+    
         st.plotly_chart(fig_exp, use_container_width=True)
-
     
         # -----------------------------
         # Download Excel
