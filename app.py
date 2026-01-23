@@ -546,7 +546,7 @@ with tab_legenda:
         sheet_main = "EQG"
         legenda_title = "EGQ vs Index and Cash – Legend"
     else:
-        sheet_main = "E/X"
+        sheet_main = "E7X"
         legenda_title = "E7X vs Funds – Legend"
 
     legenda_main = load_legenda_sheet(
