@@ -537,7 +537,6 @@ with tab_stress:
 # ==================================================
 with tab_legenda:
     st.session_state.current_tab = "Legenda"
-    #st.title("Legenda Stress Test Scenarios")
     if chart_type == "EGQ vs Index and Cash":
         st.title("EGQ vs Index and Cash")
     else:
@@ -547,10 +546,10 @@ with tab_legenda:
     # -----------------------------
     if chart_type == "EGQ vs Index and Cash":
         sheet_main = "EGQ"
-        legenda_title = "EGQ vs Index and Cash – Legend"
+        legenda_title = "Series"
     else:
         sheet_main = "E7X"
-        legenda_title = "E7X vs Funds – Legend"
+        legenda_title = "Series"
 
     legenda_main = load_legenda_sheet(
         sheet_name=sheet_main,
