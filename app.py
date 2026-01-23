@@ -537,15 +537,17 @@ with tab_stress:
 # ==================================================
 with tab_legenda:
     st.session_state.current_tab = "Legenda"
+    st.title("Legenda Stress Test Scenarios")
 
+    # -----------------------------
+    # Legenda principale (dipende dal chart_type)
+    # -----------------------------
     if chart_type == "EGQ vs Index and Cash":
         sheet_main = "EQG"
-        st.title("EGQ vs Index and Cash")
-        legenda_title = "Portfolio, Index and Cash"
+        legenda_title = "EGQ vs Index and Cash – Legend"
     else:
-        sheet_main = "E7X"
-        st.title("E7X vs Funds")
-        legenda_title = "Portfolios"
+        sheet_main = "E/X"
+        legenda_title = "E7X vs Funds – Legend"
 
     legenda_main = load_legenda_sheet(
         sheet_name=sheet_main,
@@ -561,6 +563,9 @@ with tab_legenda:
 
     st.markdown("---")
 
+    # -----------------------------
+    # Scenari
+    # -----------------------------
     legenda_scenari = load_legenda_sheet(
         sheet_name="Scenari",
         usecols="A:B"
@@ -572,5 +577,3 @@ with tab_legenda:
         use_container_width=True,
         hide_index=True
     )
-
-
