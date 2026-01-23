@@ -537,8 +537,6 @@ with tab_stress:
 # ==================================================
 with tab_legenda:
     st.session_state.current_tab = "Legenda"
-    st.title("Legenda Stress Test Scenarios")
-
     # -----------------------------
     # Legenda principale (dipende dal chart_type)
     # -----------------------------
