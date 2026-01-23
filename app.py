@@ -71,8 +71,8 @@ stress_data = load_stress_data("stress_test_totE7X.xlsx")
 @st.cache_data
 def load_legenda():
     return pd.read_excel(
-        "StressUtilizzati_light.xlsx",
-        usecols="A:B"
+        "Legenda.xlsx"
+        #usecols="A:B"
     )
 # ==================================================
 # TAB 1 — CORRELATION
