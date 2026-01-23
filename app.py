@@ -544,10 +544,12 @@ with tab_legenda:
     # -----------------------------
     if chart_type == "EGQ vs Index and Cash":
         sheet_main = "EQG"
-        legenda_title = "EGQ vs Index and Cash"
+        st.title = "EGQ vs Index and Cash"
+        legenda_title = "Portfolio, Index and Cash"
     else:
         sheet_main = "E7X"
-        legenda_title = "E7X vs Funds"
+        st.title = "E7X vs Funds"
+        legenda_title = "Portfolios"
 
     legenda_main = load_legenda_sheet(
         sheet_name=sheet_main,
