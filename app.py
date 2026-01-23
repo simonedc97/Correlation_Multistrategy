@@ -108,7 +108,7 @@ with tab_corr:
         reference_asset = "EGQ"
     else:
         df = corrE7X.copy()
-        chart_title = "E7X vs Funds"
+        chart_title = "E7X Dynamic Asset Allocation vs Funds"
         reference_asset = "E7X"
 
     # -----------------------------
@@ -285,7 +285,7 @@ if chart_type == "EGQ vs Index and Cash":
     stress_title = "EGQ Flexible Multistrategy vs Index and Cash"
 else:
     stress_path = "stress_test_totE7X.xlsx"
-    stress_title = "E7X vs Funds"
+    stress_title = "E7X Dynamic Asset Allocation vs Funds"
 
 stress_data = load_stress_data(stress_path)
 
@@ -617,7 +617,7 @@ with tab_stress:
             # -----------------------------
             # Portfolio selector
             # -----------------------------
-            st.sidebar.subheader("Portfolios (Exposure)")
+            st.sidebar.subheader("Series (Exposure)")
             available_portfolios = df_filtered["Portfolio"].dropna().sort_values().unique().tolist()
             selected_portfolios = st.sidebar.multiselect(
                 "Select portfolios",
@@ -801,7 +801,7 @@ with tab_legenda:
     if chart_type == "EGQ vs Index and Cash":
         st.title("EGQ Flexible Multistrategy vs Index and Cash")
     else:
-        st.title("E7X vs Funds")
+        st.title("E7X Dynamic Asset Allocation vs Funds")
     # -----------------------------
     # Legenda principale (dipende dal chart_type)
     # -----------------------------
