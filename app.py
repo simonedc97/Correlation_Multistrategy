@@ -345,60 +345,7 @@ elif section == "Stress Test":
     stress_data = load_stress_data(stress_path)
     st.title(stress_title)
 
-    # -----------------------------
-    # Date selector
-    # -----------------------------
-    st.sidebar.subheader("Date (Stress Test)")
 
-    all_dates = (
-        stress_data["Date"]
-        .dropna()
-        .sort_values()
-        .unique()
-    )
-
-    date_options = [d.strftime("%Y/%m/%d") for d in all_dates]
-
-    selected_date_str = st.sidebar.selectbox(
-        "Select date",
-        date_options
-    )
-
-    selected_date = pd.to_datetime(
-        selected_date_str,
-        format="%Y/%m/%d"
-    )
-
-    df_filtered = stress_data[
-        stress_data["Date"] == selected_date
-    ]
-
-    if df_filtered.empty:
-        st.warning("No data available for the selected date.")
-        st.stop()
-
-    # -----------------------------
-    # Portfolio selector
-    # -----------------------------
-    st.sidebar.subheader("Series (Stress Test)")
-
-    available_portfolios = (
-        df_filtered["Portfolio"]
-        .dropna()
-        .sort_values()
-        .unique()
-        .tolist()
-    )
-
-    selected_portfolios = st.sidebar.multiselect(
-        "Select series",
-        options=available_portfolios,
-        default=available_portfolios
-    )
-
-    if not selected_portfolios:
-        st.warning("Please select at least one portfolio.")
-        st.stop()
 
     df_filtered = df_filtered[
         df_filtered["Portfolio"].isin(selected_portfolios)
