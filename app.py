@@ -174,18 +174,6 @@ elif section == "Exposure":
 # Legend → nessun controllo
 
 
-# --------------------------------------------------
-# Sidebar controls (sempre presenti)
-# --------------------------------------------------
-st.sidebar.title("Controls")
-
-# Chart selector sempre presente
-chart_type = st.sidebar.selectbox(
-    "Select chart",
-    ["EGQ vs Index and Cash", "E7X vs Funds"]
-)
-
-
 # ==================================================
 # TAB 1 — CORRELATION
 # ==================================================
