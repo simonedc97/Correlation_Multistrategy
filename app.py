@@ -10,48 +10,45 @@ from io import BytesIO
 st.set_page_config(layout="wide")
 
 # --------------------------------------------------
+# Sidebar – GLOBAL CONTROLS
+# --------------------------------------------------
+with st.sidebar:
+    st.title("Controls")
+
+    chart_type = st.selectbox(
+        "Select chart",
+        ["EGQ vs Index and Cash", "E7X vs Funds"]
+    )
+
+# --------------------------------------------------
 # Tabs
 # --------------------------------------------------
-tab_corr, tab_stress, tab_exposure, tab_legenda = st.tabs(["Correlation", "Stress Test", "Exposure", "Legend"])
-
-# --------------------------------------------------
-# Sidebar controls (sempre presenti)
-# --------------------------------------------------
-st.sidebar.title("Controls")
-
-# Chart selector sempre presente
-chart_type = st.sidebar.selectbox(
-    "Select chart",
-    ["EGQ vs Index and Cash", "E7X vs Funds"]
+tab_corr, tab_stress, tab_exposure, tab_legenda = st.tabs(
+    ["Correlation", "Stress Test", "Exposure", "Legend"]
 )
 
 # --------------------------------------------------
-# Funzione per caricamento dati Correlation
+# Data loaders
 # --------------------------------------------------
 @st.cache_data
 def load_corr_data(path):
     df = pd.read_excel(path, sheet_name="Correlation Clean")
     df.iloc[:, 0] = pd.to_datetime(df.iloc[:, 0])
-    df = df.set_index(df.columns[0]).sort_index()
-    return df
+    return df.set_index(df.columns[0]).sort_index()
 
-# Caricamento dati Correlation
-corrEGQ = load_corr_data("corrEGQ.xlsx")
-corrE7X = load_corr_data("corrE7X.xlsx")
 
-# --------------------------------------------------
-# Funzione per caricamento dati Stress Test
-# --------------------------------------------------
 @st.cache_data
 def load_stress_data(path):
     xls = pd.ExcelFile(path)
     records = []
-    for sheet_name in xls.sheet_names:
-        if "&&" in sheet_name:
-            portfolio, scenario_name = sheet_name.split("&&", 1)
+
+    for sheet in xls.sheet_names:
+        if "&&" in sheet:
+            portfolio, scenario = sheet.split("&&", 1)
         else:
-            portfolio, scenario_name = sheet_name, sheet_name
-        df = pd.read_excel(xls, sheet_name=sheet_name)
+            portfolio = scenario = sheet
+
+        df = pd.read_excel(xls, sheet_name=sheet)
         df = df.rename(columns={
             df.columns[0]: "Date",
             df.columns[2]: "Scenario",
@@ -59,15 +56,15 @@ def load_stress_data(path):
         })
         df["Date"] = pd.to_datetime(df["Date"])
         df["Portfolio"] = portfolio
-        df["ScenarioName"] = scenario_name
-        records.append(df[["Date", "Scenario", "StressPnL", "Portfolio", "ScenarioName"]])
+        df["ScenarioName"] = scenario
+
+        records.append(df[[
+            "Date", "Scenario", "StressPnL", "Portfolio", "ScenarioName"
+        ]])
+
     return pd.concat(records, ignore_index=True)
 
-stress_data = load_stress_data("stress_test_totE7X.xlsx")
 
-    # --------------------------------------------------
-    # Funzione per caricamento dati Exposure
-    # --------------------------------------------------
 @st.cache_data
 def load_exposure_data(path):
     df = pd.read_excel(path, sheet_name="MeasuresSeries")
@@ -79,788 +76,242 @@ def load_exposure_data(path):
         df.columns[6]: "Spread Duration"
     })
     df["Date"] = pd.to_datetime(df["Date"])
-    # Rimuove eventuali spazi residui
     df.columns = df.columns.str.strip()
     return df
 
-exposure_data = load_exposure_data("E7X_Exposure.xlsx")
 
-# --------------------------------------------------
-# Funzione per caricamento Legenda
-# --------------------------------------------------
 @st.cache_data
 def load_legenda_sheet(sheet_name, usecols):
-    return pd.read_excel(
-        "Legenda.xlsx",
-        sheet_name=sheet_name,
-        usecols=usecols
-    )
+    return pd.read_excel("Legenda.xlsx", sheet_name=sheet_name, usecols=usecols)
+
+
+# --------------------------------------------------
+# Load data
+# --------------------------------------------------
+corrEGQ = load_corr_data("corrEGQ.xlsx")
+corrE7X = load_corr_data("corrE7X.xlsx")
+
+exposure_data = load_exposure_data("E7X_Exposure.xlsx")
+
+stress_path = (
+    "stress_test_totEGQ.xlsx"
+    if chart_type == "EGQ vs Index and Cash"
+    else "stress_test_totE7X.xlsx"
+)
+stress_data = load_stress_data(stress_path)
+
 # ==================================================
-# TAB 1 — CORRELATION
+# TAB — CORRELATION
 # ==================================================
 with tab_corr:
-    st.session_state.current_tab = "Correlation"
-
-    # Selezione dataframe in base al chart_type
-    if chart_type == "EGQ vs Index and Cash":
-        df = corrEGQ.copy()
-        chart_title = "EGQ Flexible Multistrategy vs Index and Cash"
-        reference_asset = "EGQ"
-    else:
-        df = corrE7X.copy()
-        chart_title = "E7X Dynamic Asset Allocation vs Funds"
-        reference_asset = "E7X"
-
-    # -----------------------------
-    # Date range picker solo qui
-    # -----------------------------
-    st.sidebar.subheader("Date range (Correlation)")
-    start_date, end_date = st.sidebar.date_input(
-        "Select start and end date",
-        value=(df.index.min().date(), df.index.max().date()),
-        min_value=df.index.min().date(),
-        max_value=df.index.max().date()
+    st.title(
+        "EGQ Flexible Multistrategy vs Index and Cash"
+        if chart_type == "EGQ vs Index and Cash"
+        else "E7X Dynamic Asset Allocation vs Funds"
     )
-    df = df.loc[pd.to_datetime(start_date):pd.to_datetime(end_date)]
 
-    # -----------------------------
-    # Series selector
-    # -----------------------------
-    st.sidebar.subheader("Series (Correlation)")
-    selected_series = st.sidebar.multiselect(
-        "Select series",
-        options=df.columns.tolist(),
-        default=df.columns.tolist()
-    )
+    df = corrEGQ.copy() if chart_type == "EGQ vs Index and Cash" else corrE7X.copy()
+
+    # Sidebar (Correlation only)
+    with st.sidebar:
+        st.subheader("Date range (Correlation)")
+        start_date, end_date = st.date_input(
+            "Select start and end date",
+            value=(df.index.min().date(), df.index.max().date())
+        )
+
+        st.subheader("Series (Correlation)")
+        selected_series = st.multiselect(
+            "Select series",
+            options=df.columns.tolist(),
+            default=df.columns.tolist()
+        )
+
     if not selected_series:
         st.warning("Please select at least one series.")
         st.stop()
 
-    # -----------------------------
-    # Color map
-    # -----------------------------
+    df = df.loc[pd.to_datetime(start_date):pd.to_datetime(end_date)]
+
+    # Plot
+    fig = go.Figure()
     palette = qualitative.Plotly
-    color_map = {s: palette[i % len(palette)] for i, s in enumerate(selected_series)}
 
-    # -----------------------------
-    # Title
-    # -----------------------------
-    st.title(chart_title)
-
-    # -----------------------------
-    # Time series plot
-    # -----------------------------
-    st.subheader("Correlation Time Series")
-    fig_ts = go.Figure()
-    for col in selected_series:
-        fig_ts.add_trace(
+    for i, col in enumerate(selected_series):
+        fig.add_trace(
             go.Scatter(
                 x=df.index,
                 y=df[col] * 100,
-                mode="lines",
                 name=col,
-                line=dict(color=color_map[col]),
-                hovertemplate="%{y:.2f}%<extra></extra>"
+                line=dict(color=palette[i % len(palette)])
             )
         )
-    fig_ts.update_layout(
-        height=600,
+
+    fig.update_layout(
+        template="plotly_white",
         hovermode="x unified",
-        template="plotly_white",
         yaxis=dict(ticksuffix="%"),
-        xaxis_title="Date",
-        yaxis_title="Correlation"
-    )
-    st.plotly_chart(fig_ts, use_container_width=True)
-    # Dati sottostanti al grafico (in percentuale, coerente con il grafico)
-    df_download = df[selected_series] * 100
-    
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        df_download.to_excel(writer, sheet_name="Time Series Data")
-    
-    st.download_button(
-        label="📥 Download time series data as Excel",
-        data=output.getvalue(),
-        file_name="time_series_data.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        key="download_time_series"
-    )
-    # -----------------------------
-    # Radar chart
-    # -----------------------------
-    st.subheader("Correlation Radar")
-    snapshot_date = df.index.max()
-    snapshot = df.loc[snapshot_date, selected_series]
-    mean_corr = df[selected_series].mean()
-
-    fig_radar = go.Figure()
-    fig_radar.add_trace(
-        go.Scatterpolar(
-            r=snapshot.values * 100,
-            theta=snapshot.index,
-            name=f"End date ({snapshot_date.date()})",
-            line=dict(width=3)
-        )
-    )
-    fig_radar.add_trace(
-        go.Scatterpolar(
-            r=mean_corr.values * 100,
-            theta=mean_corr.index,
-            name="Period mean",
-            line=dict(dash="dot")
-        )
-    )
-    fig_radar.update_layout(
-        polar=dict(radialaxis=dict(visible=True, range=[-100, 100], ticksuffix="%")),
-        template="plotly_white",
-        height=650
-    )
-    st.plotly_chart(fig_radar, use_container_width=True)
-
-    # -----------------------------
-    # Prendi la legenda principale nel tab Correlation
-    # -----------------------------
-    if chart_type == "EGQ vs Index and Cash":
-        sheet_main = "EGQ"
-    else:
-        sheet_main = "E7X"
-    
-    legenda_main = load_legenda_sheet(
-        sheet_name=sheet_main,
-        usecols="A:C"
-    )
-    
-    # Creiamo un mapping ticker → name
-    ticker_to_name = dict(zip(legenda_main["Ticker"], legenda_main["Name"]))
-
-    # -----------------------------
-    # Summary statistics
-    # -----------------------------
-    st.subheader("Summary statistics")
-    
-    stats_df = pd.DataFrame(index=selected_series)
-    
-    # Inseriamo la colonna Name dalla legenda
-    stats_df.insert(0, "Name", [ticker_to_name.get(t, "") for t in selected_series])
-    
-    # Calcolo delle statistiche
-    stats_df["Mean (%)"] = df[selected_series].mean() * 100
-    stats_df["Min (%)"] = df[selected_series].min() * 100
-    stats_df["Min Date"] = [df[col][df[col] == df[col].min()].index.max() for col in selected_series]
-    stats_df["Max (%)"] = df[selected_series].max() * 100
-    stats_df["Max Date"] = [df[col][df[col] == df[col].max()].index.max() for col in selected_series]
-    
-    # Formattazione date
-    stats_df["Min Date"] = pd.to_datetime(stats_df["Min Date"]).dt.strftime("%d/%m/%Y")
-    stats_df["Max Date"] = pd.to_datetime(stats_df["Max Date"]).dt.strftime("%d/%m/%Y")
-    
-    # Visualizzazione
-    st.dataframe(
-        stats_df.style.format({"Mean (%)": "{:.2f}%", "Min (%)": "{:.2f}%", "Max (%)": "{:.2f}%"}),
-        use_container_width=True
+        height=600
     )
 
-    
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        stats_df.to_excel(writer, sheet_name="Summary Stats")
-    
-    st.download_button(
-        label="📥 Download summary statistics as Excel",
-        data=output.getvalue(),
-        file_name="summary_statistics.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        key="download_summary_stats"
-    )
-
-# ==================================================
-# TAB — STRESS TEST
-# ==================================================
-# --------------------------------------------------
-# Select Stress Test file based on chart_type
-# --------------------------------------------------
-if chart_type == "EGQ vs Index and Cash":
-    stress_path = "stress_test_totEGQ.xlsx"
-    stress_title = "EGQ Flexible Multistrategy vs Index"
-else:
-    stress_path = "stress_test_totE7X.xlsx"
-    stress_title = "E7X Dynamic Asset Allocation vs Funds"
-
-stress_data = load_stress_data(stress_path)
-
+    st.plotly_chart(fig, use_container_width=True)
 
 # ==================================================
 # TAB — STRESS TEST
 # ==================================================
 with tab_stress:
-    st.session_state.current_tab = "StressTest"
-    st.title(stress_title)
-
-    # -----------------------------
-    # Date selector
-    # -----------------------------
-    st.sidebar.subheader("Date (Stress Test)")
-
-    all_dates = (
-        stress_data["Date"]
-        .dropna()
-        .sort_values()
-        .unique()
+    st.title(
+        "EGQ Flexible Multistrategy vs Index"
+        if chart_type == "EGQ vs Index and Cash"
+        else "E7X Dynamic Asset Allocation vs Funds"
     )
 
-    date_options = [d.strftime("%Y/%m/%d") for d in all_dates]
+    with st.sidebar:
+        st.subheader("Date (Stress Test)")
+        dates = sorted(stress_data["Date"].dropna().unique())
+        date_str = st.selectbox(
+            "Select date",
+            [d.strftime("%Y/%m/%d") for d in dates]
+        )
 
-    selected_date_str = st.sidebar.selectbox(
-        "Select date",
-        date_options
-    )
+        selected_date = pd.to_datetime(date_str)
 
-    selected_date = pd.to_datetime(
-        selected_date_str,
-        format="%Y/%m/%d"
-    )
+        st.subheader("Series (Stress Test)")
+        portfolios = stress_data["Portfolio"].unique().tolist()
+        selected_portfolios = st.multiselect(
+            "Select series",
+            portfolios,
+            default=portfolios
+        )
 
-    df_filtered = stress_data[
-        stress_data["Date"] == selected_date
+        st.subheader("Scenarios (Stress Test)")
+        scenarios = stress_data["ScenarioName"].unique().tolist()
+        selected_scenarios = st.multiselect(
+            "Select scenarios",
+            scenarios,
+            default=scenarios
+        )
+
+    df = stress_data[
+        (stress_data["Date"] == selected_date) &
+        (stress_data["Portfolio"].isin(selected_portfolios)) &
+        (stress_data["ScenarioName"].isin(selected_scenarios))
     ]
 
-    if df_filtered.empty:
-        st.warning("No data available for the selected date.")
+    if df.empty:
+        st.warning("No data available.")
         st.stop()
 
-    # -----------------------------
-    # Portfolio selector
-    # -----------------------------
-    st.sidebar.subheader("Series (Stress Test)")
-
-    available_portfolios = (
-        df_filtered["Portfolio"]
-        .dropna()
-        .sort_values()
-        .unique()
-        .tolist()
-    )
-
-    selected_portfolios = st.sidebar.multiselect(
-        "Select series",
-        options=available_portfolios,
-        default=available_portfolios
-    )
-
-    if not selected_portfolios:
-        st.warning("Please select at least one portfolio.")
-        st.stop()
-
-    df_filtered = df_filtered[
-        df_filtered["Portfolio"].isin(selected_portfolios)
-    ]
-
-    # -----------------------------
-    # Scenario selector
-    # -----------------------------
-    st.sidebar.subheader("Scenarios (Stress Test)")
-
-    available_scenarios = (
-        df_filtered["ScenarioName"]
-        .dropna()
-        .sort_values()
-        .unique()
-        .tolist()
-    )
-
-    selected_scenarios = st.sidebar.multiselect(
-        "Select stress scenarios",
-        options=available_scenarios,
-        default=available_scenarios
-    )
-
-    if not selected_scenarios:
-        st.warning("Please select at least one stress scenario.")
-        st.stop()
-
-    df_filtered = df_filtered[
-        df_filtered["ScenarioName"].isin(selected_scenarios)
-    ]
-
-    # Preserve user order
-    df_filtered["ScenarioName"] = pd.Categorical(
-        df_filtered["ScenarioName"],
-        categories=selected_scenarios,
-        ordered=True
-    )
-
-    df_filtered["Portfolio"] = pd.Categorical(
-        df_filtered["Portfolio"],
-        categories=selected_portfolios,
-        ordered=True
-    )
-
-    # -----------------------------
-    # Stress Test PnL – Grouped bar
-    # -----------------------------
-    st.subheader("Stress Test PnL")
-
-    fig_bar = go.Figure()
+    fig = go.Figure()
     palette = qualitative.Plotly
 
-    for i, portfolio in enumerate(selected_portfolios):
-        df_port = df_filtered[
-            df_filtered["Portfolio"] == portfolio
-        ]
-
-        if df_port.empty:
-            continue
-
-        fig_bar.add_trace(
+    for i, p in enumerate(selected_portfolios):
+        d = df[df["Portfolio"] == p]
+        fig.add_trace(
             go.Bar(
-                x=df_port["ScenarioName"],
-                y=df_port["StressPnL"],
-                name=portfolio,
-                marker_color=palette[i % len(palette)],
-                text=df_port["StressPnL"],
-                textposition="auto"
+                x=d["ScenarioName"],
+                y=d["StressPnL"],
+                name=p,
+                marker_color=palette[i % len(palette)]
             )
         )
 
-    fig_bar.update_layout(
+    fig.update_layout(
         barmode="group",
-        xaxis_title="Scenario",
-        yaxis_title="Stress PnL (bps)",
+        template="plotly_white",
+        height=600,
+        yaxis_title="Stress PnL (bps)"
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+# ==================================================
+# TAB — EXPOSURE
+# ==================================================
+with tab_exposure:
+    st.title(
+        "E7X Dynamic Asset Allocation vs Funds"
+        if chart_type == "E7X vs Funds"
+        else "EGQ Flexible Multistrategy vs Index and Cash"
+    )
+
+    if chart_type != "E7X vs Funds":
+        st.info("Analysis not performed for this subset.")
+        st.stop()
+
+    with st.sidebar:
+        st.subheader("Date (Exposure)")
+        dates = sorted(exposure_data["Date"].unique())
+        date_str = st.selectbox(
+            "Select date",
+            [d.strftime("%Y/%m/%d") for d in dates],
+            index=len(dates) - 1
+        )
+
+        selected_date = pd.to_datetime(date_str)
+
+        st.subheader("Series (Exposure)")
+        portfolios = exposure_data["Portfolio"].unique().tolist()
+        selected_portfolios = st.multiselect(
+            "Select portfolios",
+            portfolios,
+            default=portfolios
+        )
+
+    df = exposure_data[
+        (exposure_data["Date"] == selected_date) &
+        (exposure_data["Portfolio"].isin(selected_portfolios))
+    ]
+
+    metrics = ["Equity Exposure", "Duration", "Spread Duration"]
+
+    df_plot = df.melt(
+        id_vars="Portfolio",
+        value_vars=metrics,
+        var_name="Metric",
+        value_name="Value"
+    )
+
+    fig = go.Figure()
+    palette = qualitative.Plotly
+
+    for i, p in enumerate(selected_portfolios):
+        d = df_plot[df_plot["Portfolio"] == p]
+        fig.add_trace(
+            go.Bar(
+                x=d["Metric"],
+                y=d["Value"],
+                name=p,
+                marker_color=palette[i % len(palette)]
+            )
+        )
+
+    fig.update_layout(
+        barmode="group",
         template="plotly_white",
         height=600
     )
 
-    st.plotly_chart(fig_bar, use_container_width=True)
-
-    df_download = df_filtered[df_filtered["Portfolio"].isin(selected_portfolios)][
-        ["Portfolio", "ScenarioName", "StressPnL"]
-    ]
-    
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        df_download.to_excel(writer, sheet_name="Stress Test PnL", index=False)
-    
-    st.download_button(
-        label="📥 Download Stress PnL data as Excel",
-        data=output.getvalue(),
-        file_name="stress_test_pnl.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        key="download_stress_pnl"
-    )   
-    # -----------------------------
-    # Portfolio vs Bucket Analysis
-    # -----------------------------
-    st.markdown("---")
-    st.subheader("Comparison Analysis")
-    
-    # Default portfolio per Comparison Analysis
-    if chart_type == "EGQ vs Index and Cash":
-        default_portfolio = "EGQ"
-    else:
-        default_portfolio = "E7X"
-    
-    default_index = (
-        selected_portfolios.index(default_portfolio)
-        if default_portfolio in selected_portfolios
-        else 0
-    )
-    
-    selected_portfolio = st.selectbox(
-        "Analysis portfolio",
-        selected_portfolios,
-        index=default_index
-    )
-
-    
-    # Dati del portfolio selezionato
-    df_analysis = df_filtered[
-        df_filtered["Portfolio"] == selected_portfolio
-    ][["ScenarioName", "StressPnL"]]
-    
-    # Dati degli altri portafogli, ora considerati come Bucket
-    df_bucket = df_filtered[
-        df_filtered["Portfolio"] != selected_portfolio
-    ][["ScenarioName", "StressPnL"]]
-    
-    if df_bucket.empty:
-        st.warning("Not enough portfolios selected for bucket comparison.")
-        st.stop()
-    
-    # Calcolo mediana e quantili del Bucket
-    df_bucket_stats = (
-        df_bucket
-        .groupby("ScenarioName", as_index=False)
-        .agg(
-            bucket_median=("StressPnL", "median"),
-            q25=("StressPnL", lambda x: x.quantile(0.25)),
-            q75=("StressPnL", lambda x: x.quantile(0.75))
-        )
-    )
-    
-    # Merge dei dati per il plot
-    df_plot = df_analysis.merge(
-        df_bucket_stats,
-        on="ScenarioName",
-        how="inner"
-    )
-    
-    fig = go.Figure()
-    
-    # Q25–Q75 range (barra ombreggiata)
-    for _, r in df_plot.iterrows():
-        fig.add_trace(
-            go.Scatter(
-                x=[r["q25"], r["q75"]],
-                y=[r["ScenarioName"], r["ScenarioName"]],
-                mode="lines",
-                line=dict(width=14, color="rgba(255,0,0,0.25)"),
-                showlegend=False,  # non appare nella legenda
-                hoverinfo="skip"
-            )
-        )
-    
-    # Bucket median
-    fig.add_trace(
-        go.Scatter(
-            x=df_plot["bucket_median"],
-            y=df_plot["ScenarioName"],
-            mode="markers",
-            marker=dict(size=9, color="red"),
-            name="Bucket median"
-        )
-    )
-    
-    # Selected portfolio
-    fig.add_trace(
-        go.Scatter(
-            x=df_plot["StressPnL"],
-            y=df_plot["ScenarioName"],
-            mode="markers",
-            marker=dict(size=14, symbol="star", color="orange"),
-            name=selected_portfolio
-        )
-    )
-    
-    fig.update_layout(
-        xaxis_title="Stress PnL (bps)",
-        yaxis_title="Scenario",
-        template="plotly_white",
-        height=600,
-        hovermode="y"
-    )
-    
     st.plotly_chart(fig, use_container_width=True)
-    
-    st.markdown(
-        """
-        <div style="display: flex; align-items: center;">
-            <sub style="margin-right: 4px;">Note: the shaded areas</sub>
-            <div style="width: 20px; height: 14px; background-color: rgba(255,0,0,0.25); margin: 0 4px 0 0; border: 1px solid rgba(0,0,0,0.1);"></div>
-            <sub>represent the dispersion between the 25th and 75th percentile of the Bucket.</sub>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
 
-
-
-    # -----------------------------
-    # Bottone di download Excel dei dati del grafico
-    # -----------------------------
-    
-    # Dati da scaricare
-    df_download = df_plot.rename(columns={
-        "bucket_median": "Bucket Portfolio Median",
-        "q25": "25% Quantile",
-        "q75": "75% Quantile",
-        "StressPnL": selected_portfolio
-    })
-    
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        df_download.to_excel(writer, sheet_name="Portfolio vs Bucket", index=False)
-    
-    st.download_button(
-        label=f"📥 Download {selected_portfolio} vs Bucket data as Excel",
-        data=output.getvalue(),
-        file_name=f"{selected_portfolio}_vs_bucket.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        key=f"download_{selected_portfolio}_vs_bucket"
-    )
-
-
-    # ==================================================
-    # TAB — EXPOSURE
-    # ==================================================
-    with tab_exposure:
-        st.session_state.current_tab = "Exposure"
-    
-        # Titolo dinamico
-        if chart_type == "E7X vs Funds":
-            st.title("E7X Dynamic Asset Allocation vs Funds")
-        else:
-            st.title("EGQ Flexible Multistrategy vs Index and Cash")  # titolo per il subset non analizzato
-    
-        # Se chart_type è EGQ vs Index, mostra solo info box
-        if chart_type != "E7X vs Funds":
-            st.info("Analysis not performed for this subset.")
-        else:
-            # -----------------------------
-            # Date selector
-            # -----------------------------
-            st.sidebar.subheader("Date (Exposure)")
-            all_dates = exposure_data["Date"].dropna().sort_values().unique()
-            date_options = [d.strftime("%Y/%m/%d") for d in all_dates]
-    
-            # Seleziona di default l'ultima data disponibile
-            selected_date_str = st.sidebar.selectbox(
-                "Select date",
-                date_options,
-                index=len(date_options) - 1
-            )
-            selected_date = pd.to_datetime(selected_date_str, format="%Y/%m/%d")
-    
-            df_filtered = exposure_data[exposure_data["Date"] == selected_date]
-    
-            if df_filtered.empty:
-                st.warning("No data available for the selected date.")
-                st.stop()
-    
-            # -----------------------------
-            # Portfolio selector
-            # -----------------------------
-            st.sidebar.subheader("Series (Exposure)")
-            available_portfolios = df_filtered["Portfolio"].dropna().sort_values().unique().tolist()
-            selected_portfolios = st.sidebar.multiselect(
-                "Select portfolios",
-                options=available_portfolios,
-                default=available_portfolios
-            )
-    
-            if not selected_portfolios:
-                st.warning("Please select at least one portfolio.")
-                st.stop()
-    
-            df_filtered = df_filtered[df_filtered["Portfolio"].isin(selected_portfolios)]
-    
-            # -----------------------------
-            # Grafico Exposure stile Stress Test
-            # -----------------------------
-            st.subheader("Exposure")
-            metrics = ["Equity Exposure", "Duration", "Spread Duration"]
-    
-            # DataFrame “long format” per Plotly
-            df_plot = df_filtered.melt(
-                id_vars=["Portfolio"], 
-                value_vars=metrics,
-                var_name="Metric",
-                value_name="Value"
-            )
-    
-            fig_exp = go.Figure()
-            palette = qualitative.Plotly
-    
-            for i, portfolio in enumerate(selected_portfolios):
-                df_port = df_plot[df_plot["Portfolio"] == portfolio]
-                fig_exp.add_trace(
-                    go.Bar(
-                        x=df_port["Metric"],  
-                        y=df_port["Value"],   
-                        name=portfolio,
-                        marker_color=palette[i % len(palette)],
-                        text=df_port["Value"].round(1),
-                        textposition="auto",
-                        texttemplate="%{text:.1f}"
-                    )
-                )
-    
-            fig_exp.update_layout(
-                barmode="group",
-                xaxis_title="Metric",
-                yaxis_title="Value",
-                template="plotly_white",
-                height=600
-            )
-    
-            st.plotly_chart(fig_exp, use_container_width=True)
-            # -----------------------------
-            # Download Excel dati Exposure
-            # -----------------------------
-            output = BytesIO()
-            with pd.ExcelWriter(output, engine="openpyxl") as writer:
-                df_filtered.to_excel(writer, sheet_name="Exposure Data", index=False)
-    
-            st.download_button(
-                label="📥 Download Exposure data as Excel",
-                data=output.getvalue(),
-                file_name="exposure_data.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key="download_exposure"
-            )
-            
-            # -----------------------------
-            # Comparison Analysis Exposure
-            # -----------------------------
-            st.markdown("---")
-            st.subheader("Comparison Analysis")
-    
-            default_portfolio = "E7X"
-            
-            default_index = (
-                selected_portfolios.index(default_portfolio)
-                if default_portfolio in selected_portfolios
-                else 0
-            )
-            
-            selected_portfolio = st.selectbox(
-                "Analysis portfolio",
-                selected_portfolios,
-                index=default_index
-            )
-
-    
-            df_analysis = df_filtered[df_filtered["Portfolio"] == selected_portfolio][["Portfolio"] + metrics]
-            df_bucket = df_filtered[df_filtered["Portfolio"] != selected_portfolio][["Portfolio"] + metrics]
-    
-            if df_bucket.empty:
-                st.warning("Not enough portfolios selected for bucket comparison.")
-                st.stop()
-    
-            # Calcolo mediana e quantili del Bucket per ciascuna metrica
-            df_bucket_stats = df_bucket[metrics].agg(["median", lambda x: x.quantile(0.25), lambda x: x.quantile(0.75)]).T
-            df_bucket_stats.columns = ["bucket_median", "q25", "q75"]
-    
-            # Merge dei dati per il plot
-            df_plot_comp = df_analysis.melt(id_vars=["Portfolio"], value_vars=metrics, var_name="Metric", value_name="Value")
-            df_plot_comp = df_plot_comp.merge(df_bucket_stats.reset_index().rename(columns={"index":"Metric"}), on="Metric", how="left")
-    
-            # Plot Comparison
-            fig_comp = go.Figure()
-    
-            # Q25–Q75 range (barra ombreggiata)
-            for _, r in df_plot_comp.iterrows():
-                fig_comp.add_trace(
-                    go.Scatter(
-                        x=[r["q25"], r["q75"]],
-                        y=[r["Metric"], r["Metric"]],
-                        mode="lines",
-                        line=dict(width=14, color="rgba(0,0,255,0.25)"),
-                        showlegend=False,
-                        hoverinfo="skip"
-                    )
-                )
-    
-            # Bucket median
-            fig_comp.add_trace(
-                go.Scatter(
-                    x=df_plot_comp["bucket_median"],
-                    y=df_plot_comp["Metric"],
-                    mode="markers",
-                    marker=dict(size=9, color="blue"),
-                    name="Bucket median"
-                )
-            )
-    
-            # Selected portfolio
-            fig_comp.add_trace(
-                go.Scatter(
-                    x=df_plot_comp["Value"],
-                    y=df_plot_comp["Metric"],
-                    mode="markers",
-                    marker=dict(size=14, symbol="star", color="orange"),
-                    name=selected_portfolio
-                )
-            )
-    
-            fig_comp.update_layout(
-                xaxis_title="Exposure Value",
-                yaxis_title="Metric",
-                template="plotly_white",
-                height=600,
-                hovermode="y"
-            )
-    
-            st.plotly_chart(fig_comp, use_container_width=True)
-            st.markdown(
-                """
-                <div style="display: flex; align-items: center;">
-                    <sub style="margin-right: 4px;">Note: the shaded areas</sub>
-                    <div style="width: 20px; height: 14px; background-color: rgba(0,0,255,0.25); margin: 0 4px 0 0; border: 1px solid rgba(0,0,0,0.1);"></div>
-                    <sub>represent the dispersion between the 25th and 75th percentile of the Bucket.</sub>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-    
-            # -----------------------------
-            # Download Excel dei dati Comparison
-            # -----------------------------
-            df_download_comp = df_plot_comp.rename(columns={
-                "bucket_median": "Bucket Portfolio Median",
-                "q25": "25% Quantile",
-                "q75": "75% Quantile",
-                "Value": selected_portfolio
-            })
-    
-            output = BytesIO()
-            with pd.ExcelWriter(output, engine="openpyxl") as writer:
-                df_download_comp.to_excel(writer, sheet_name="Exposure Comparison", index=False)
-    
-            st.download_button(
-                label=f"📥 Download {selected_portfolio} vs Bucket Exposure data as Excel",
-                data=output.getvalue(),
-                file_name=f"{selected_portfolio}_vs_bucket_exposure.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key=f"download_{selected_portfolio}_vs_bucket_exposure"
-            )
-    
 # ==================================================
 # TAB — LEGENDA
 # ==================================================
 with tab_legenda:
-    st.session_state.current_tab = "Legenda"
-    if chart_type == "EGQ vs Index and Cash":
-        st.title("EGQ Flexible Multistrategy vs Index and Cash")
-    else:
-        st.title("E7X Dynamic Asset Allocation vs Funds")
-    # -----------------------------
-    # Legenda principale (dipende dal chart_type)
-    # -----------------------------
-    if chart_type == "EGQ vs Index and Cash":
-        sheet_main = "EGQ"
-        legenda_title = "Series"
-    else:
-        sheet_main = "E7X"
-        legenda_title = "Series"
-
-    legenda_main = load_legenda_sheet(
-        sheet_name=sheet_main,
-        usecols="A:C"
+    st.title(
+        "EGQ Flexible Multistrategy vs Index and Cash"
+        if chart_type == "EGQ vs Index and Cash"
+        else "E7X Dynamic Asset Allocation vs Funds"
     )
 
-    st.subheader(legenda_title)
-    st.dataframe(
-        legenda_main,
-        use_container_width=True,
-        hide_index=True
-    )
+    sheet = "EGQ" if chart_type == "EGQ vs Index and Cash" else "E7X"
+
+    legenda_main = load_legenda_sheet(sheet, "A:C")
+    st.subheader("Series")
+    st.dataframe(legenda_main, use_container_width=True, hide_index=True)
 
     st.markdown("---")
 
-    # -----------------------------
-    # Scenari
-    # -----------------------------
-    legenda_scenari = load_legenda_sheet(
-        sheet_name="Scenari",
-        usecols="A:B"
-    )
-
+    legenda_scenari = load_legenda_sheet("Scenari", "A:B")
     st.subheader("Stress Test Scenarios")
-    st.dataframe(
-        legenda_scenari,
-        use_container_width=True,
-        hide_index=True
-    )
-
-    
+    st.dataframe(legenda_scenari, use_container_width=True, hide_index=True)
