@@ -9,6 +9,9 @@ from io import BytesIO
 # --------------------------------------------------
 st.set_page_config(layout="wide")
 
+# --------------------------------------------------
+# Sidebar per selezione chart e sezione
+# --------------------------------------------------
 with st.sidebar:
     st.title("Controls")
 
@@ -23,96 +26,86 @@ with st.sidebar:
         ["Correlation", "Stress Test", "Exposure", "Legend"]
     )
 
-    # -----------------------------
-    # CORRELATION
-    # -----------------------------
-    if section == "Correlation":
-        st.subheader("Date range (Correlation)")
-        start_date, end_date = st.date_input(
-            "Select start and end date",
-            value=(df_corr.index.min().date(), df_corr.index.max().date())
-        )
+# --------------------------------------------------
+# Caricamento dati (prima di usarli)
+# --------------------------------------------------
+corrEGQ = load_corr_data("corrEGQ.xlsx")
+corrE7X = load_corr_data("corrE7X.xlsx")
+stress_data = load_stress_data("stress_test_totE7X.xlsx")
+exposure_data = load_exposure_data("E7X_Exposure.xlsx")
 
-        st.subheader("Series (Correlation)")
-        selected_series = st.multiselect(
-            "Select series",
-            options=df_corr.columns.tolist(),
-            default=df_corr.columns.tolist()
-        )
+# --------------------------------------------------
+# Sidebar controlli dinamici in base alla sezione
+# --------------------------------------------------
+if section == "Correlation":
+    df_corr = corrEGQ.copy() if chart_type == "EGQ vs Index and Cash" else corrE7X.copy()
 
-    # -----------------------------
-    # STRESS TEST
-    # -----------------------------
-    elif section == "Stress Test":
-        st.subheader("Date (Stress Test)")
-        date_options = sorted(stress_data["Date"].dropna().unique())
-        selected_date = st.selectbox(
+    st.sidebar.subheader("Date range (Correlation)")
+    start_date, end_date = st.sidebar.date_input(
+        "Select start and end date",
+        value=(df_corr.index.min().date(), df_corr.index.max().date()),
+        min_value=df_corr.index.min().date(),
+        max_value=df_corr.index.max().date()
+    )
+
+    st.sidebar.subheader("Series (Correlation)")
+    selected_series = st.sidebar.multiselect(
+        "Select series",
+        options=df_corr.columns.tolist(),
+        default=df_corr.columns.tolist()
+    )
+
+elif section == "Stress Test":
+    st.sidebar.subheader("Date (Stress Test)")
+    date_options = sorted(stress_data["Date"].dropna().unique())
+    selected_date = st.sidebar.selectbox(
+        "Select date",
+        date_options,
+        format_func=lambda d: d.strftime("%Y/%m/%d")
+    )
+
+    st.sidebar.subheader("Series (Stress Test)")
+    available_portfolios = (
+        stress_data["Portfolio"].dropna().sort_values().unique().tolist()
+    )
+    selected_portfolios = st.sidebar.multiselect(
+        "Select series",
+        available_portfolios,
+        default=available_portfolios
+    )
+
+    st.sidebar.subheader("Scenarios (Stress Test)")
+    available_scenarios = (
+        stress_data["ScenarioName"].dropna().sort_values().unique().tolist()
+    )
+    selected_scenarios = st.sidebar.multiselect(
+        "Select stress scenarios",
+        available_scenarios,
+        default=available_scenarios
+    )
+
+elif section == "Exposure":
+    if chart_type == "E7X vs Funds":
+        st.sidebar.subheader("Date (Exposure)")
+        date_options = sorted(exposure_data["Date"].dropna().unique())
+        selected_date = st.sidebar.selectbox(
             "Select date",
             date_options,
-            format_func=lambda d: d.strftime("%Y/%m/%d")
+            format_func=lambda d: d.strftime("%Y/%m/%d"),
+            index=len(date_options) - 1
         )
 
-        st.subheader("Series (Stress Test)")
+        st.sidebar.subheader("Series (Exposure)")
         available_portfolios = (
-            stress_data["Portfolio"]
-            .dropna()
-            .sort_values()
-            .unique()
-            .tolist()
+            exposure_data["Portfolio"].dropna().sort_values().unique().tolist()
         )
-
-        selected_portfolios = st.multiselect(
-            "Select series",
+        selected_portfolios = st.sidebar.multiselect(
+            "Select portfolios",
             available_portfolios,
             default=available_portfolios
         )
 
-        st.subheader("Scenarios (Stress Test)")
-        available_scenarios = (
-            stress_data["ScenarioName"]
-            .dropna()
-            .sort_values()
-            .unique()
-            .tolist()
-        )
-
-        selected_scenarios = st.multiselect(
-            "Select stress scenarios",
-            available_scenarios,
-            default=available_scenarios
-        )
-
-    # -----------------------------
-    # EXPOSURE
-    # -----------------------------
-    elif section == "Exposure":
-
-        if chart_type == "E7X vs Funds":
-            st.subheader("Date (Exposure)")
-            date_options = sorted(exposure_data["Date"].unique())
-            selected_date = st.selectbox(
-                "Select date",
-                date_options,
-                format_func=lambda d: d.strftime("%Y/%m/%d"),
-                index=len(date_options) - 1
-            )
-
-            st.subheader("Series (Exposure)")
-            available_portfolios = (
-                exposure_data["Portfolio"]
-                .dropna()
-                .sort_values()
-                .unique()
-                .tolist()
-            )
-
-            selected_portfolios = st.multiselect(
-                "Select portfolios",
-                available_portfolios,
-                default=available_portfolios
-            )
-
-    # Legend → NESSUN controllo
+# Legend → nessun controllo
 
 
 # --------------------------------------------------
