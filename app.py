@@ -29,10 +29,76 @@ with st.sidebar:
 # --------------------------------------------------
 # Caricamento dati (prima di usarli)
 # --------------------------------------------------
+# --------------------------------------------------
+# Funzione per caricamento dati Correlation
+# --------------------------------------------------
+@st.cache_data
+def load_corr_data(path):
+    df = pd.read_excel(path, sheet_name="Correlation Clean")
+    df.iloc[:, 0] = pd.to_datetime(df.iloc[:, 0])
+    df = df.set_index(df.columns[0]).sort_index()
+    return df
+
+# Caricamento dati Correlation
 corrEGQ = load_corr_data("corrEGQ.xlsx")
 corrE7X = load_corr_data("corrE7X.xlsx")
+
+# --------------------------------------------------
+# Funzione per caricamento dati Stress Test
+# --------------------------------------------------
+@st.cache_data
+def load_stress_data(path):
+    xls = pd.ExcelFile(path)
+    records = []
+    for sheet_name in xls.sheet_names:
+        if "&&" in sheet_name:
+            portfolio, scenario_name = sheet_name.split("&&", 1)
+        else:
+            portfolio, scenario_name = sheet_name, sheet_name
+        df = pd.read_excel(xls, sheet_name=sheet_name)
+        df = df.rename(columns={
+            df.columns[0]: "Date",
+            df.columns[2]: "Scenario",
+            df.columns[4]: "StressPnL"
+        })
+        df["Date"] = pd.to_datetime(df["Date"])
+        df["Portfolio"] = portfolio
+        df["ScenarioName"] = scenario_name
+        records.append(df[["Date", "Scenario", "StressPnL", "Portfolio", "ScenarioName"]])
+    return pd.concat(records, ignore_index=True)
+
 stress_data = load_stress_data("stress_test_totE7X.xlsx")
+
+    # --------------------------------------------------
+    # Funzione per caricamento dati Exposure
+    # --------------------------------------------------
+@st.cache_data
+def load_exposure_data(path):
+    df = pd.read_excel(path, sheet_name="MeasuresSeries")
+    df = df.rename(columns={
+        df.columns[0]: "Date",
+        df.columns[3]: "Portfolio",
+        df.columns[4]: "Equity Exposure",
+        df.columns[5]: "Duration",
+        df.columns[6]: "Spread Duration"
+    })
+    df["Date"] = pd.to_datetime(df["Date"])
+    # Rimuove eventuali spazi residui
+    df.columns = df.columns.str.strip()
+    return df
+
 exposure_data = load_exposure_data("E7X_Exposure.xlsx")
+
+# --------------------------------------------------
+# Funzione per caricamento Legenda
+# --------------------------------------------------
+@st.cache_data
+def load_legenda_sheet(sheet_name, usecols):
+    return pd.read_excel(
+        "Legenda.xlsx",
+        sheet_name=sheet_name,
+        usecols=usecols
+    )
 
 # --------------------------------------------------
 # Sidebar controlli dinamici in base alla sezione
@@ -119,76 +185,7 @@ chart_type = st.sidebar.selectbox(
     ["EGQ vs Index and Cash", "E7X vs Funds"]
 )
 
-# --------------------------------------------------
-# Funzione per caricamento dati Correlation
-# --------------------------------------------------
-@st.cache_data
-def load_corr_data(path):
-    df = pd.read_excel(path, sheet_name="Correlation Clean")
-    df.iloc[:, 0] = pd.to_datetime(df.iloc[:, 0])
-    df = df.set_index(df.columns[0]).sort_index()
-    return df
 
-# Caricamento dati Correlation
-corrEGQ = load_corr_data("corrEGQ.xlsx")
-corrE7X = load_corr_data("corrE7X.xlsx")
-
-# --------------------------------------------------
-# Funzione per caricamento dati Stress Test
-# --------------------------------------------------
-@st.cache_data
-def load_stress_data(path):
-    xls = pd.ExcelFile(path)
-    records = []
-    for sheet_name in xls.sheet_names:
-        if "&&" in sheet_name:
-            portfolio, scenario_name = sheet_name.split("&&", 1)
-        else:
-            portfolio, scenario_name = sheet_name, sheet_name
-        df = pd.read_excel(xls, sheet_name=sheet_name)
-        df = df.rename(columns={
-            df.columns[0]: "Date",
-            df.columns[2]: "Scenario",
-            df.columns[4]: "StressPnL"
-        })
-        df["Date"] = pd.to_datetime(df["Date"])
-        df["Portfolio"] = portfolio
-        df["ScenarioName"] = scenario_name
-        records.append(df[["Date", "Scenario", "StressPnL", "Portfolio", "ScenarioName"]])
-    return pd.concat(records, ignore_index=True)
-
-stress_data = load_stress_data("stress_test_totE7X.xlsx")
-
-    # --------------------------------------------------
-    # Funzione per caricamento dati Exposure
-    # --------------------------------------------------
-@st.cache_data
-def load_exposure_data(path):
-    df = pd.read_excel(path, sheet_name="MeasuresSeries")
-    df = df.rename(columns={
-        df.columns[0]: "Date",
-        df.columns[3]: "Portfolio",
-        df.columns[4]: "Equity Exposure",
-        df.columns[5]: "Duration",
-        df.columns[6]: "Spread Duration"
-    })
-    df["Date"] = pd.to_datetime(df["Date"])
-    # Rimuove eventuali spazi residui
-    df.columns = df.columns.str.strip()
-    return df
-
-exposure_data = load_exposure_data("E7X_Exposure.xlsx")
-
-# --------------------------------------------------
-# Funzione per caricamento Legenda
-# --------------------------------------------------
-@st.cache_data
-def load_legenda_sheet(sheet_name, usecols):
-    return pd.read_excel(
-        "Legenda.xlsx",
-        sheet_name=sheet_name,
-        usecols=usecols
-    )
 # ==================================================
 # TAB 1 — CORRELATION
 # ==================================================
