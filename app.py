@@ -190,30 +190,7 @@ if section == "Correlation":
         chart_title = "E7X Dynamic Asset Allocation vs Funds"
         reference_asset = "E7X"
 
-    # -----------------------------
-    # Date range picker solo qui
-    # -----------------------------
-    st.sidebar.subheader("Date range (Correlation)")
-    start_date, end_date = st.sidebar.date_input(
-        "Select start and end date",
-        value=(df.index.min().date(), df.index.max().date()),
-        min_value=df.index.min().date(),
-        max_value=df.index.max().date()
-    )
-    df = df.loc[pd.to_datetime(start_date):pd.to_datetime(end_date)]
 
-    # -----------------------------
-    # Series selector
-    # -----------------------------
-    st.sidebar.subheader("Series (Correlation)")
-    selected_series = st.sidebar.multiselect(
-        "Select series",
-        options=df.columns.tolist(),
-        default=df.columns.tolist()
-    )
-    if not selected_series:
-        st.warning("Please select at least one series.")
-        st.stop()
 
     # -----------------------------
     # Color map
