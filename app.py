@@ -347,50 +347,6 @@ elif section == "Stress Test":
 
 
 
-    df_filtered = df_filtered[
-        df_filtered["Portfolio"].isin(selected_portfolios)
-    ]
-
-    # -----------------------------
-    # Scenario selector
-    # -----------------------------
-    st.sidebar.subheader("Scenarios (Stress Test)")
-
-    available_scenarios = (
-        df_filtered["ScenarioName"]
-        .dropna()
-        .sort_values()
-        .unique()
-        .tolist()
-    )
-
-    selected_scenarios = st.sidebar.multiselect(
-        "Select stress scenarios",
-        options=available_scenarios,
-        default=available_scenarios
-    )
-
-    if not selected_scenarios:
-        st.warning("Please select at least one stress scenario.")
-        st.stop()
-
-    df_filtered = df_filtered[
-        df_filtered["ScenarioName"].isin(selected_scenarios)
-    ]
-
-    # Preserve user order
-    df_filtered["ScenarioName"] = pd.Categorical(
-        df_filtered["ScenarioName"],
-        categories=selected_scenarios,
-        ordered=True
-    )
-
-    df_filtered["Portfolio"] = pd.Categorical(
-        df_filtered["Portfolio"],
-        categories=selected_portfolios,
-        ordered=True
-    )
-
     # -----------------------------
     # Stress Test PnL – Grouped bar
     # -----------------------------
