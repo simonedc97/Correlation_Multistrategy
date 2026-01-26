@@ -454,11 +454,24 @@ with tab_stress:
     st.markdown("---")
     st.subheader("Comparison Analysis")
     
+    # Default portfolio per Comparison Analysis
+    if chart_type == "EGQ vs Index and Cash":
+        default_portfolio = "EGQ"
+    else:
+        default_portfolio = "E7X"
+    
+    default_index = (
+        selected_portfolios.index(default_portfolio)
+        if default_portfolio in selected_portfolios
+        else 0
+    )
+    
     selected_portfolio = st.selectbox(
         "Analysis portfolio",
         selected_portfolios,
-        index=0
+        index=default_index
     )
+
     
     # Dati del portfolio selezionato
     df_analysis = df_filtered[
@@ -692,11 +705,20 @@ with tab_stress:
             st.markdown("---")
             st.subheader("Comparison Analysis")
     
+            default_portfolio = "E7X"
+            
+            default_index = (
+                selected_portfolios.index(default_portfolio)
+                if default_portfolio in selected_portfolios
+                else 0
+            )
+            
             selected_portfolio = st.selectbox(
                 "Analysis portfolio",
                 selected_portfolios,
-                index=0
+                index=default_index
             )
+
     
             df_analysis = df_filtered[df_filtered["Portfolio"] == selected_portfolio][["Portfolio"] + metrics]
             df_bucket = df_filtered[df_filtered["Portfolio"] != selected_portfolio][["Portfolio"] + metrics]
