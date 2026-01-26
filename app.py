@@ -10,25 +10,21 @@ from io import BytesIO
 st.set_page_config(layout="wide")
 
 # --------------------------------------------------
-# Sidebar per selezione chart e sezione
+# Tabs
 # --------------------------------------------------
-with st.sidebar:
-    st.title("Controls")
-
-    # Sempre visibile
-    chart_type = st.selectbox(
-        "Select chart",
-        ["EGQ vs Index and Cash", "E7X vs Funds"]
-    )
-
-    section = st.radio(
-        "Section",
-        ["Correlation", "Stress Test", "Exposure", "Legend"]
-    )
+tab_corr, tab_stress, tab_exposure, tab_legenda = st.tabs(["Correlation", "Stress Test", "Exposure", "Legend"])
 
 # --------------------------------------------------
-# Caricamento dati (prima di usarli)
+# Sidebar controls (sempre presenti)
 # --------------------------------------------------
+st.sidebar.title("Controls")
+
+# Chart selector sempre presente
+chart_type = st.sidebar.selectbox(
+    "Select chart",
+    ["EGQ vs Index and Cash", "E7X vs Funds"]
+)
+
 # --------------------------------------------------
 # Funzione per caricamento dati Correlation
 # --------------------------------------------------
@@ -99,85 +95,10 @@ def load_legenda_sheet(sheet_name, usecols):
         sheet_name=sheet_name,
         usecols=usecols
     )
-
-# --------------------------------------------------
-# Sidebar controlli dinamici in base alla sezione
-# --------------------------------------------------
-if section == "Correlation":
-    df_corr = corrEGQ.copy() if chart_type == "EGQ vs Index and Cash" else corrE7X.copy()
-
-    st.sidebar.subheader("Date range (Correlation)")
-    start_date, end_date = st.sidebar.date_input(
-        "Select start and end date",
-        value=(df_corr.index.min().date(), df_corr.index.max().date()),
-        min_value=df_corr.index.min().date(),
-        max_value=df_corr.index.max().date()
-    )
-
-    st.sidebar.subheader("Series (Correlation)")
-    selected_series = st.sidebar.multiselect(
-        "Select series",
-        options=df_corr.columns.tolist(),
-        default=df_corr.columns.tolist()
-    )
-
-elif section == "Stress Test":
-    st.sidebar.subheader("Date (Stress Test)")
-    date_options = sorted(stress_data["Date"].dropna().unique())
-    selected_date = st.sidebar.selectbox(
-        "Select date",
-        date_options,
-        format_func=lambda d: d.strftime("%Y/%m/%d")
-    )
-
-    st.sidebar.subheader("Series (Stress Test)")
-    available_portfolios = (
-        stress_data["Portfolio"].dropna().sort_values().unique().tolist()
-    )
-    selected_portfolios = st.sidebar.multiselect(
-        "Select series",
-        available_portfolios,
-        default=available_portfolios
-    )
-
-    st.sidebar.subheader("Scenarios (Stress Test)")
-    available_scenarios = (
-        stress_data["ScenarioName"].dropna().sort_values().unique().tolist()
-    )
-    selected_scenarios = st.sidebar.multiselect(
-        "Select stress scenarios",
-        available_scenarios,
-        default=available_scenarios
-    )
-
-elif section == "Exposure":
-    if chart_type == "E7X vs Funds":
-        st.sidebar.subheader("Date (Exposure)")
-        date_options = sorted(exposure_data["Date"].dropna().unique())
-        selected_date = st.sidebar.selectbox(
-            "Select date",
-            date_options,
-            format_func=lambda d: d.strftime("%Y/%m/%d"),
-            index=len(date_options) - 1
-        )
-
-        st.sidebar.subheader("Series (Exposure)")
-        available_portfolios = (
-            exposure_data["Portfolio"].dropna().sort_values().unique().tolist()
-        )
-        selected_portfolios = st.sidebar.multiselect(
-            "Select portfolios",
-            available_portfolios,
-            default=available_portfolios
-        )
-
-# Legend → nessun controllo
-
-
 # ==================================================
 # TAB 1 — CORRELATION
 # ==================================================
-if section == "Correlation":
+with tab_corr:
     st.session_state.current_tab = "Correlation"
 
     # Selezione dataframe in base al chart_type
@@ -190,7 +111,30 @@ if section == "Correlation":
         chart_title = "E7X Dynamic Asset Allocation vs Funds"
         reference_asset = "E7X"
 
+    # -----------------------------
+    # Date range picker solo qui
+    # -----------------------------
+    st.sidebar.subheader("Date range (Correlation)")
+    start_date, end_date = st.sidebar.date_input(
+        "Select start and end date",
+        value=(df.index.min().date(), df.index.max().date()),
+        min_value=df.index.min().date(),
+        max_value=df.index.max().date()
+    )
+    df = df.loc[pd.to_datetime(start_date):pd.to_datetime(end_date)]
 
+    # -----------------------------
+    # Series selector
+    # -----------------------------
+    st.sidebar.subheader("Series (Correlation)")
+    selected_series = st.sidebar.multiselect(
+        "Select series",
+        options=df.columns.tolist(),
+        default=df.columns.tolist()
+    )
+    if not selected_series:
+        st.warning("Please select at least one series.")
+        st.stop()
 
     # -----------------------------
     # Color map
@@ -333,19 +277,124 @@ if section == "Correlation":
 # ==================================================
 # TAB — STRESS TEST
 # ==================================================
-elif section == "Stress Test":
-    st.session_state.current_tab = "Stress Test"
-    if chart_type == "EGQ vs Index and Cash":
-        stress_path = "stress_test_totEGQ.xlsx"
-        stress_title = "EGQ Flexible Multistrategy vs Index"
-    else:
-        stress_path = "stress_test_totE7X.xlsx"
-        stress_title = "E7X Dynamic Asset Allocation vs Funds"
-    
-    stress_data = load_stress_data(stress_path)
+# --------------------------------------------------
+# Select Stress Test file based on chart_type
+# --------------------------------------------------
+if chart_type == "EGQ vs Index and Cash":
+    stress_path = "stress_test_totEGQ.xlsx"
+    stress_title = "EGQ Flexible Multistrategy vs Index"
+else:
+    stress_path = "stress_test_totE7X.xlsx"
+    stress_title = "E7X Dynamic Asset Allocation vs Funds"
+
+stress_data = load_stress_data(stress_path)
+
+
+# ==================================================
+# TAB — STRESS TEST
+# ==================================================
+with tab_stress:
+    st.session_state.current_tab = "StressTest"
     st.title(stress_title)
 
+    # -----------------------------
+    # Date selector
+    # -----------------------------
+    st.sidebar.subheader("Date (Stress Test)")
 
+    all_dates = (
+        stress_data["Date"]
+        .dropna()
+        .sort_values()
+        .unique()
+    )
+
+    date_options = [d.strftime("%Y/%m/%d") for d in all_dates]
+
+    selected_date_str = st.sidebar.selectbox(
+        "Select date",
+        date_options
+    )
+
+    selected_date = pd.to_datetime(
+        selected_date_str,
+        format="%Y/%m/%d"
+    )
+
+    df_filtered = stress_data[
+        stress_data["Date"] == selected_date
+    ]
+
+    if df_filtered.empty:
+        st.warning("No data available for the selected date.")
+        st.stop()
+
+    # -----------------------------
+    # Portfolio selector
+    # -----------------------------
+    st.sidebar.subheader("Series (Stress Test)")
+
+    available_portfolios = (
+        df_filtered["Portfolio"]
+        .dropna()
+        .sort_values()
+        .unique()
+        .tolist()
+    )
+
+    selected_portfolios = st.sidebar.multiselect(
+        "Select series",
+        options=available_portfolios,
+        default=available_portfolios
+    )
+
+    if not selected_portfolios:
+        st.warning("Please select at least one portfolio.")
+        st.stop()
+
+    df_filtered = df_filtered[
+        df_filtered["Portfolio"].isin(selected_portfolios)
+    ]
+
+    # -----------------------------
+    # Scenario selector
+    # -----------------------------
+    st.sidebar.subheader("Scenarios (Stress Test)")
+
+    available_scenarios = (
+        df_filtered["ScenarioName"]
+        .dropna()
+        .sort_values()
+        .unique()
+        .tolist()
+    )
+
+    selected_scenarios = st.sidebar.multiselect(
+        "Select stress scenarios",
+        options=available_scenarios,
+        default=available_scenarios
+    )
+
+    if not selected_scenarios:
+        st.warning("Please select at least one stress scenario.")
+        st.stop()
+
+    df_filtered = df_filtered[
+        df_filtered["ScenarioName"].isin(selected_scenarios)
+    ]
+
+    # Preserve user order
+    df_filtered["ScenarioName"] = pd.Categorical(
+        df_filtered["ScenarioName"],
+        categories=selected_scenarios,
+        ordered=True
+    )
+
+    df_filtered["Portfolio"] = pd.Categorical(
+        df_filtered["Portfolio"],
+        categories=selected_portfolios,
+        ordered=True
+    )
 
     # -----------------------------
     # Stress Test PnL – Grouped bar
@@ -544,7 +593,7 @@ elif section == "Stress Test":
     # ==================================================
     # TAB — EXPOSURE
     # ==================================================
-elif section == "Exposure":
+    with tab_exposure:
         st.session_state.current_tab = "Exposure"
     
         # Titolo dinamico
@@ -769,7 +818,7 @@ elif section == "Exposure":
 # ==================================================
 # TAB — LEGENDA
 # ==================================================
-else:
+with tab_legenda:
     st.session_state.current_tab = "Legenda"
     if chart_type == "EGQ vs Index and Cash":
         st.title("EGQ Flexible Multistrategy vs Index and Cash")
