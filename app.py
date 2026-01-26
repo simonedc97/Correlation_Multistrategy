@@ -12,6 +12,7 @@ st.set_page_config(layout="wide")
 with st.sidebar:
     st.title("Controls")
 
+    # Sempre visibile
     chart_type = st.selectbox(
         "Select chart",
         ["EGQ vs Index and Cash", "E7X vs Funds"]
@@ -22,32 +23,96 @@ with st.sidebar:
         ["Correlation", "Stress Test", "Exposure", "Legend"]
     )
 
-with st.sidebar:
-
+    # -----------------------------
+    # CORRELATION
+    # -----------------------------
     if section == "Correlation":
         st.subheader("Date range (Correlation)")
-        start_date, end_date = st.date_input(...)
+        start_date, end_date = st.date_input(
+            "Select start and end date",
+            value=(df_corr.index.min().date(), df_corr.index.max().date())
+        )
 
         st.subheader("Series (Correlation)")
-        selected_series = st.multiselect(...)
+        selected_series = st.multiselect(
+            "Select series",
+            options=df_corr.columns.tolist(),
+            default=df_corr.columns.tolist()
+        )
 
+    # -----------------------------
+    # STRESS TEST
+    # -----------------------------
     elif section == "Stress Test":
         st.subheader("Date (Stress Test)")
-        selected_date = st.selectbox(...)
+        date_options = sorted(stress_data["Date"].dropna().unique())
+        selected_date = st.selectbox(
+            "Select date",
+            date_options,
+            format_func=lambda d: d.strftime("%Y/%m/%d")
+        )
 
         st.subheader("Series (Stress Test)")
-        selected_portfolios = st.multiselect(...)
+        available_portfolios = (
+            stress_data["Portfolio"]
+            .dropna()
+            .sort_values()
+            .unique()
+            .tolist()
+        )
+
+        selected_portfolios = st.multiselect(
+            "Select series",
+            available_portfolios,
+            default=available_portfolios
+        )
 
         st.subheader("Scenarios (Stress Test)")
-        selected_scenarios = st.multiselect(...)
+        available_scenarios = (
+            stress_data["ScenarioName"]
+            .dropna()
+            .sort_values()
+            .unique()
+            .tolist()
+        )
 
+        selected_scenarios = st.multiselect(
+            "Select stress scenarios",
+            available_scenarios,
+            default=available_scenarios
+        )
+
+    # -----------------------------
+    # EXPOSURE
+    # -----------------------------
     elif section == "Exposure":
+
         if chart_type == "E7X vs Funds":
             st.subheader("Date (Exposure)")
-            selected_date = st.selectbox(...)
+            date_options = sorted(exposure_data["Date"].unique())
+            selected_date = st.selectbox(
+                "Select date",
+                date_options,
+                format_func=lambda d: d.strftime("%Y/%m/%d"),
+                index=len(date_options) - 1
+            )
 
             st.subheader("Series (Exposure)")
-            selected_portfolios = st.multiselect(...)
+            available_portfolios = (
+                exposure_data["Portfolio"]
+                .dropna()
+                .sort_values()
+                .unique()
+                .tolist()
+            )
+
+            selected_portfolios = st.multiselect(
+                "Select portfolios",
+                available_portfolios,
+                default=available_portfolios
+            )
+
+    # Legend → NESSUN controllo
 
 
 # --------------------------------------------------
