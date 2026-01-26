@@ -313,24 +313,16 @@ if section == "Correlation":
 # ==================================================
 # TAB — STRESS TEST
 # ==================================================
-# --------------------------------------------------
-# Select Stress Test file based on chart_type
-# --------------------------------------------------
-if chart_type == "EGQ vs Index and Cash":
-    stress_path = "stress_test_totEGQ.xlsx"
-    stress_title = "EGQ Flexible Multistrategy vs Index"
-else:
-    stress_path = "stress_test_totE7X.xlsx"
-    stress_title = "E7X Dynamic Asset Allocation vs Funds"
-
-stress_data = load_stress_data(stress_path)
-
-
-# ==================================================
-# TAB — STRESS TEST
-# ==================================================
 elif section == "Stress Test":
-    st.session_state.current_tab = "StressTest"
+    st.session_state.current_tab = "Stress Test"
+    if chart_type == "EGQ vs Index and Cash":
+        stress_path = "stress_test_totEGQ.xlsx"
+        stress_title = "EGQ Flexible Multistrategy vs Index"
+    else:
+        stress_path = "stress_test_totE7X.xlsx"
+        stress_title = "E7X Dynamic Asset Allocation vs Funds"
+    
+    stress_data = load_stress_data(stress_path)
     st.title(stress_title)
 
     # -----------------------------
