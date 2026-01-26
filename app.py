@@ -9,10 +9,46 @@ from io import BytesIO
 # --------------------------------------------------
 st.set_page_config(layout="wide")
 
-# --------------------------------------------------
-# Tabs
-# --------------------------------------------------
-tab_corr, tab_stress, tab_exposure, tab_legenda = st.tabs(["Correlation", "Stress Test", "Exposure", "Legend"])
+with st.sidebar:
+    st.title("Controls")
+
+    chart_type = st.selectbox(
+        "Select chart",
+        ["EGQ vs Index and Cash", "E7X vs Funds"]
+    )
+
+    section = st.radio(
+        "Section",
+        ["Correlation", "Stress Test", "Exposure", "Legend"]
+    )
+
+with st.sidebar:
+
+    if section == "Correlation":
+        st.subheader("Date range (Correlation)")
+        start_date, end_date = st.date_input(...)
+
+        st.subheader("Series (Correlation)")
+        selected_series = st.multiselect(...)
+
+    elif section == "Stress Test":
+        st.subheader("Date (Stress Test)")
+        selected_date = st.selectbox(...)
+
+        st.subheader("Series (Stress Test)")
+        selected_portfolios = st.multiselect(...)
+
+        st.subheader("Scenarios (Stress Test)")
+        selected_scenarios = st.multiselect(...)
+
+    elif section == "Exposure":
+        if chart_type == "E7X vs Funds":
+            st.subheader("Date (Exposure)")
+            selected_date = st.selectbox(...)
+
+            st.subheader("Series (Exposure)")
+            selected_portfolios = st.multiselect(...)
+
 
 # --------------------------------------------------
 # Sidebar controls (sempre presenti)
@@ -98,7 +134,7 @@ def load_legenda_sheet(sheet_name, usecols):
 # ==================================================
 # TAB 1 — CORRELATION
 # ==================================================
-with tab_corr:
+if section == "Correlation":
     st.session_state.current_tab = "Correlation"
 
     # Selezione dataframe in base al chart_type
@@ -293,7 +329,7 @@ stress_data = load_stress_data(stress_path)
 # ==================================================
 # TAB — STRESS TEST
 # ==================================================
-with tab_stress:
+elif section == "Stress Test":
     st.session_state.current_tab = "StressTest"
     st.title(stress_title)
 
@@ -593,7 +629,7 @@ with tab_stress:
     # ==================================================
     # TAB — EXPOSURE
     # ==================================================
-    with tab_exposure:
+elif section == "Exposure":
         st.session_state.current_tab = "Exposure"
     
         # Titolo dinamico
@@ -818,7 +854,7 @@ with tab_stress:
 # ==================================================
 # TAB — LEGENDA
 # ==================================================
-with tab_legenda:
+else:
     st.session_state.current_tab = "Legenda"
     if chart_type == "EGQ vs Index and Cash":
         st.title("EGQ Flexible Multistrategy vs Index and Cash")
