@@ -853,7 +853,7 @@ with tab_legenda:
     # -----------------------------
     legenda_scenari = load_legenda_sheet(
         sheet_name="Scenari",
-        usecols="A:B"
+        usecols="A:C"
     )
 
     st.subheader("Stress Test Scenarios")
